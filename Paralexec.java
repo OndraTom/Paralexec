@@ -6,14 +6,26 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Queue;
 import org.json.*;
 
 /**
- * Main class for parallel executing of the Totem processes scripts.
+ * Main class for parallel executing of the tree structure processes.
+ *
+ * Example of Paralexec call:
+ *
+ *	java -jar Paralexec.jar "execution-scenario.json" "processes-scripts/" 10
+ *
+ * Parameters:
+ *
+ *	- processes execution scenario tree
+ *  - processes folders and files path
+ *  - maximum number of runnin threads (optional)
  *
  * @author oto
  */
-public class Paralexec implements ExecListener
+public class Paralexec implements ExecManager
 {
 	/**
 	 * Number of running threads.
@@ -22,14 +34,33 @@ public class Paralexec implements ExecListener
 
 
 	/**
+	 * Maximum number of running threads.
+	 *
+	 * 0 = unlimited
+	 */
+	protected int runningThreadsMaxCount = 0;
+
+
+	/**
 	 * Path to the running flag file.
 	 */
 	protected Path runningFlagFilePath;
 
 
+	/**
+	 * Execs queue.
+	 *
+	 * Paralexec is using this queue in case of limited number of executed threads.
+	 */
+	protected Queue execQueue;
+
+
 	public Paralexec()
 	{
-		this.runningFlagFilePath = Paths.get(this.getCurrentDir() + File.separator + "running");
+		this.runningFlagFilePath	= Paths.get(this.getCurrentDir() + File.separator + "running");
+		this.execQueue				= new LinkedList();
+
+		this.createRunningFile();
 	}
 
 
@@ -42,18 +73,47 @@ public class Paralexec implements ExecListener
 
 		try
 		{
+			// Mandatory arguments validation.
 			paralexec.checkArgs(args);
 
+			// Parse the scenario.
 			String jsonString	= paralexec.readFile(args[0]);
 			JSONObject json		= new JSONObject(jsonString);
 			JSONObject scenario = json.getJSONObject("scenario");
 
+			// Set the maximum number of running threads if provided.
+			if (args.length >= 3)
+			{
+				paralexec.setRunningThreadsMaxCount(Integer.parseInt(args[2]));
+			}
+
+			// Execute the process tree.
 			paralexec.processSettings(scenario, args[1]);
 		}
+		// Handle error.
 		catch (Exception e)
 		{
 			Paralexec.handleError(e);
+			paralexec.deleteRunningFile();
 		}
+	}
+
+
+	/**
+	 * Sets the maximum number of running threads.
+	 *
+	 * @param	count
+	 * @throws	Exception
+	 */
+	protected void setRunningThreadsMaxCount(int count) throws Exception
+	{
+		// It has to be positive number or zero.
+		if (count < 0)
+		{
+			throw new Exception("Maximum number of running threads has to be positive number or 0 for infinity.");
+		}
+
+		this.runningThreadsMaxCount = count;
 	}
 
 
@@ -71,22 +131,19 @@ public class Paralexec implements ExecListener
 	/**
 	 * Checks the CLI arguments.
 	 *
-	 * Exit the application in case of args invalidity.
-	 *
-	 * @param args
+	 * @param	args
+	 * @throws	Exception
 	 */
-	protected void checkArgs(String[] args)
+	protected void checkArgs(String[] args) throws Exception
 	{
 		if (args.length < 1)
 		{
-			System.out.println("Execution scenario not provided.");
-			System.exit(0);
+			throw new Exception("Execution scenario not provided.");
 		}
 
 		if (args.length < 2)
 		{
-			System.out.println("Processes scripts directory not provided.");
-			System.exit(0);
+			throw new Exception("Processes scripts directory not provided.");
 		}
 	}
 
@@ -101,20 +158,30 @@ public class Paralexec implements ExecListener
 	{
 		Iterator keys = settings.keys();
 
+		// We will fill the queue with the zero level processes.
 		while (keys.hasNext())
 		{
 			String settingId = (String) keys.next();
 
 			try
 			{
-				Exec exec = new Exec(settings.getJSONObject(settingId), scriptsDir, this);
-
-				exec.start();
+				this.addExecToQeue(new Exec(settings.getJSONObject(settingId), scriptsDir, this));
 			}
 			catch (JSONException e)
 			{
 				this.handleError(e);
 			}
+		}
+
+		// If the queue is empty, we are done.
+		if (this.execQueue.isEmpty())
+		{
+			this.deleteRunningFile();
+		}
+		// Otherwise, let's start the process.
+		else
+		{
+			this.processQueue();
 		}
 	}
 
@@ -134,44 +201,43 @@ public class Paralexec implements ExecListener
 	}
 
 
-	@Override
-	public void manageThreadStart()
+	/**
+	 * Creates the running file.
+	 */
+	protected void createRunningFile()
 	{
-		this.runningThreads++;
+		try
+		{
+			if (Files.exists(this.runningFlagFilePath))
+			{
+				throw new Exception("Paralexec is running.");
+			}
 
-		if (!Files.exists(this.runningFlagFilePath))
-		{
-			try
-			{
-				Files.createFile(this.runningFlagFilePath);
-			}
-			catch (IOException e)
-			{
-				this.handleError(e);
-			}
+			Files.createFile(this.runningFlagFilePath);
 		}
-		else
+		catch (Exception e)
 		{
-			System.out.println("The running file exists.");
+			this.handleError(e);
+			System.exit(0);
 		}
 	}
 
 
-	@Override
-	public void manageThreadEnd()
+	/**
+	 * Deletes the running file.
+	 */
+	protected void deleteRunningFile()
 	{
-		this.runningThreads--;
-
-		if (this.runningThreads <= 0 && Files.exists(this.runningFlagFilePath))
+		try
 		{
-			try
+			if (Files.exists(this.runningFlagFilePath))
 			{
 				Files.delete(this.runningFlagFilePath);
 			}
-			catch (IOException e)
-			{
-				this.handleError(e);
-			}
+		}
+		catch (IOException e)
+		{
+			this.handleError(e);
 		}
 	}
 
@@ -195,5 +261,56 @@ public class Paralexec implements ExecListener
 	protected static void writeErrorMessage(String msg)
 	{
 		System.out.println("Exec error: " + msg);
+	}
+
+
+	/**
+	 * Inserts the Exec into the Exec queue.
+	 *
+	 * @param exec
+	 */
+	protected void addExecToQeue(Exec exec)
+	{
+		this.execQueue.add(exec);
+	}
+
+
+	/**
+	 * Processes the Exec queue.
+	 */
+	protected void processQueue()
+	{
+		while ((this.runningThreadsMaxCount == 0 || this.runningThreads < this.runningThreadsMaxCount) && !this.execQueue.isEmpty())
+		{
+			this.runningThreads++;
+
+			Exec exec = (Exec) this.execQueue.poll();
+
+			exec.start();
+		}
+	}
+
+
+	@Override
+	public void manageExecStart(Exec exec)
+	{
+		this.addExecToQeue(exec);
+		this.processQueue();
+	}
+
+
+	@Override
+	public void manageExecEnd()
+	{
+		this.runningThreads--;
+
+		if (this.runningThreads == 0 && this.execQueue.isEmpty())
+		{
+			this.deleteRunningFile();
+		}
+		else
+		{
+			this.processQueue();
+		}
 	}
 }

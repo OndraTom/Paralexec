@@ -5,11 +5,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Threads of the parallel execution.
+ * Thread of the parallel execution.
  *
  * @author oto
  */
-public class Exec implements Runnable, ExecListener
+public class Exec implements Runnable
 {
 	/**
 	 * Actual process setting.
@@ -30,9 +30,9 @@ public class Exec implements Runnable, ExecListener
 
 
 	/**
-	 * Parent - executor of the Exec.
+	 * Exec manager.
 	 */
-	ExecListener parent;
+	ExecManager manager;
 
 
 	/**
@@ -40,13 +40,13 @@ public class Exec implements Runnable, ExecListener
 	 *
 	 * @param setting
 	 * @param scriptsDir
-	 * @param parent
+	 * @param manager
 	 */
-	public Exec(JSONObject setting, String scriptsDir, ExecListener parent)
+	public Exec(JSONObject setting, String scriptsDir, ExecManager manager)
 	{
 		this.setting	= setting;
 		this.scriptsDir = scriptsDir;
-		this.parent		= parent;
+		this.manager	= manager;
 	}
 
 
@@ -76,8 +76,6 @@ public class Exec implements Runnable, ExecListener
 	{
 		try
 		{
-			this.manageThreadStart();
-
 			System.out.println("Running script: " + this.getScriptPath());
 
 			// Start the pipeline process and wait until it end.
@@ -92,7 +90,7 @@ public class Exec implements Runnable, ExecListener
 		}
 		finally
 		{
-			this.manageThreadEnd();
+			this.manager.manageExecEnd();
 		}
 	}
 
@@ -109,11 +107,10 @@ public class Exec implements Runnable, ExecListener
 		while (keys.hasNext())
 		{
 			String settingId = (String) keys.next();
+
 			try
 			{
-				Exec exec = new Exec(children.getJSONObject(settingId), this.scriptsDir, this);
-
-				exec.start();
+				this.manager.manageExecStart(new Exec(children.getJSONObject(settingId), this.scriptsDir, this.manager));
 			}
 			catch (JSONException e)
 			{
@@ -150,19 +147,5 @@ public class Exec implements Runnable, ExecListener
 		Thread t = new Thread(this);
 
 		t.start();
-	}
-
-
-	@Override
-	public void manageThreadStart()
-	{
-		this.parent.manageThreadStart();
-	}
-
-
-	@Override
-	public void manageThreadEnd()
-	{
-		this.parent.manageThreadEnd();
 	}
 }
