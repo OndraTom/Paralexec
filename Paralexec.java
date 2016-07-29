@@ -281,8 +281,10 @@ public class Paralexec implements ExecManager
 	protected void processQueue()
 	{
 		while ((this.runningThreadsMaxCount == 0 || this.runningThreads < this.runningThreadsMaxCount) && !this.execQueue.isEmpty())
-		{
+		{	
 			this.runningThreads++;
+			
+			System.out.println("Executing process (threads count = " + this.runningThreads + ").");
 
 			Exec exec = (Exec) this.execQueue.poll();
 
@@ -303,6 +305,8 @@ public class Paralexec implements ExecManager
 	public void manageExecEnd()
 	{
 		this.runningThreads--;
+		
+		System.out.println("Ending process (threads count = " + this.runningThreads + ").");
 
 		if (this.runningThreads == 0 && this.execQueue.isEmpty())
 		{
