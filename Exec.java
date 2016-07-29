@@ -72,7 +72,7 @@ public class Exec implements Runnable
 	 *
 	 * @throws JSONException
 	 */
-	protected void executeScript()
+	protected void executeScript() throws JSONException
 	{
 		try
 		{
