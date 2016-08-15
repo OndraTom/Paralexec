@@ -135,6 +135,8 @@ public class Exec implements Runnable
 		catch (Exception e)
 		{
 			System.out.println("Exec error: " + e.getMessage());
+
+			this.manager.manageExecEnd();
 		}
 	}
 
