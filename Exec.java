@@ -135,6 +135,7 @@ public class Exec implements Runnable
 		catch (JSONException e)
 		{
 			System.out.println("Exec error while processing getJSONObject(children): " + e.getMessage());
+			this.manager.manageExecEnd();
 		}
 	}
 
