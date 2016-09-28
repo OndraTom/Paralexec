@@ -93,7 +93,7 @@ public class Paralexec implements ExecManager
 		// Handle error.
 		catch (Exception e)
 		{
-			Paralexec.handleError(e);
+			writeErrorMessage("Paralexec execution error: " + e.getMessage());
 			paralexec.deleteRunningFile();
 		}
 	}
@@ -169,7 +169,7 @@ public class Paralexec implements ExecManager
 			}
 			catch (JSONException e)
 			{
-				this.handleError(e);
+				writeErrorMessage("Paralexec error while processing getJSONObject(" + settingId + "): " + e.getMessage());
 			}
 		}
 
@@ -217,7 +217,7 @@ public class Paralexec implements ExecManager
 		}
 		catch (Exception e)
 		{
-			this.handleError(e);
+			writeErrorMessage("Paralexec error while creating the running file: " + e.getMessage());
 			System.exit(0);
 		}
 	}
@@ -237,19 +237,8 @@ public class Paralexec implements ExecManager
 		}
 		catch (IOException e)
 		{
-			this.handleError(e);
+			writeErrorMessage("Paralexec error while deleting running file: " + e.getMessage());
 		}
-	}
-
-
-	/**
-	 * Handles the exception.
-	 *
-	 * @param e
-	 */
-	protected static void handleError(Exception e)
-	{
-		Paralexec.writeErrorMessage(e.getMessage());
 	}
 
 
@@ -260,7 +249,7 @@ public class Paralexec implements ExecManager
 	 */
 	protected static void writeErrorMessage(String msg)
 	{
-		System.out.println("Exec error: " + msg);
+		System.out.println(msg);
 	}
 
 

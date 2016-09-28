@@ -114,7 +114,7 @@ public class Exec implements Runnable
 			}
 			catch (JSONException e)
 			{
-				System.out.println("Exec error: " + e.getMessage());
+				System.out.println("Exec error while processing getJSONObject(" + settingId + "): " + e.getMessage());
 			}
 		}
 	}
@@ -132,9 +132,9 @@ public class Exec implements Runnable
 				this.processChildren(setting.getJSONObject("children"));
 			}
 		}
-		catch (Exception e)
+		catch (JSONException e)
 		{
-			System.out.println("Exec error: " + e.getMessage());
+			System.out.println("Exec error while processing getJSONObject(children): " + e.getMessage());
 		}
 	}
 
