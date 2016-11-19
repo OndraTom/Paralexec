@@ -36,32 +36,32 @@ final public class Paralexec
 	 * Executed processes table.
 	 */
 	private ExecutedProcessesTable processTable;
-	
-	
+
+
 	/**
 	 * Process tree.
 	 */
 	private ProcessSettingTree processTree;
-	
-	
+
+
 	/**
 	 * Executed processes list.
 	 */
 	private Map<Integer, Process> processList = new HashMap<>();
-	
-	
+
+
 	/**
 	 * Current directory path.
 	 */
 	private String currentDir;
-	
-	
+
+
 	/**
 	 * Process scripts directory.
 	 */
 	private String scriptsDir;
-	
-	
+
+
 	/**
 	 * Number of running threads.
 	 */
@@ -80,8 +80,8 @@ final public class Paralexec
 	 * Path to the running flag file.
 	 */
 	private Path runningFlagFilePath;
-	
-	
+
+
 	/**
 	 * Processing queue flag.
 	 */
@@ -113,14 +113,14 @@ final public class Paralexec
 	public static void main(String[] args)
 	{
 		Paralexec paralexec = null;
-		
+
 		try
 		{
 			paralexec = new Paralexec();
-			
+
 			// Mandatory arguments validation.
 			paralexec.checkArgs(args);
-			
+
 			// Setting the processes scripts directory.
 			paralexec.setScriptsDir(args[0]);
 
@@ -137,15 +137,15 @@ final public class Paralexec
 		catch (Exception e)
 		{
 			writeErrorMessage("Paralexec execution error: " + e.getMessage());
-			
+
 			if (paralexec != null)
 			{
 				paralexec.deleteRunningFile();
 			}
 		}
 	}
-	
-	
+
+
 	/**
 	 * @return True if running file exists.
 	 */
@@ -153,8 +153,8 @@ final public class Paralexec
 	{
 		return Files.exists(this.runningFlagFilePath);
 	}
-	
-	
+
+
 	/**
 	 * @return Processes scripts direcotry.
 	 */
@@ -162,11 +162,11 @@ final public class Paralexec
 	{
 		return this.scriptsDir;
 	}
-	
-	
+
+
 	/**
 	 * @return Executed processes table instance.
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	private ExecutedProcessesTable getExecutedProcessesTableInstance() throws Exception
 	{
@@ -179,8 +179,8 @@ final public class Paralexec
 			throw new Exception("DB error: " + e.getMessage());
 		}
 	}
-	
-	
+
+
 	/**
 	 * @return Executed processes table.
 	 */
@@ -188,17 +188,17 @@ final public class Paralexec
 	{
 		return this.processTable;
 	}
-	
-	
+
+
 	/**
 	 * Loads the process setting tree.
-	 * 
-	 * @throws Exception 
+	 *
+	 * @throws Exception
 	 */
 	private void loadProcessTree() throws Exception
 	{
 		System.out.println("Loading process tree.");
-		
+
 		try
 		{
 			this.processTree = new ProcessSettingTree(this.processTable);
@@ -208,12 +208,12 @@ final public class Paralexec
 			throw new Exception(e.getMessage());
 		}
 	}
-	
-	
+
+
 	/**
 	 * Sets the process scripts directory.
-	 * 
-	 * @param scriptsDir 
+	 *
+	 * @param scriptsDir
 	 */
 	private void setScriptsDir(String scriptsDir)
 	{
@@ -271,12 +271,12 @@ final public class Paralexec
 	private void processSettings()
 	{
 		this.createRunningFile();
-		
+
 		this.startMonitor();
-		
+
 		// We will fill the queue with the root processes.
 		for (ProcessSetting process : this.processTree.getRootItems())
-		{	
+		{
 			this.addExecToQeue(new Exec(process, this));
 		}
 
@@ -291,12 +291,12 @@ final public class Paralexec
 			this.processQueue();
 		}
 	}
-	
-	
+
+
 	private void startMonitor()
 	{
 		ParalexecMonitor monitor = new ParalexecMonitor(this);
-		
+
 		monitor.start();
 	}
 
@@ -307,7 +307,7 @@ final public class Paralexec
 	private void createRunningFile()
 	{
 		System.out.println("Creating running file: " + this.runningFlagFilePath);
-		
+
 		try
 		{
 			if (this.isRunning())
@@ -329,13 +329,13 @@ final public class Paralexec
 	 * Deletes the running file.
 	 */
 	private void deleteRunningFile()
-	{	
+	{
 		try
 		{
 			if (this.isRunning())
 			{
 				System.out.println("Deleting running file.");
-				
+
 				Files.delete(this.runningFlagFilePath);
 			}
 		}
@@ -378,15 +378,15 @@ final public class Paralexec
 			this.stopProcessing();
 			return;
 		}
-		
+
 		if (!this.processingQueue)
 		{
 			this.processingQueue = true;
-			
+
 			while ((this.runningThreadsMaxCount == 0 || this.runningThreads < this.runningThreadsMaxCount) && !this.execQueue.isEmpty() && this.isRunning())
-			{	
+			{
 				this.runningThreads++;
-				
+
 //				try
 //				{
 //					Thread.sleep(10000);
@@ -401,12 +401,12 @@ final public class Paralexec
 
 				exec.start();
 			}
-			
+
 			this.processingQueue = false;
 		}
 	}
-	
-	
+
+
 	/**
 	 * Stops processing.
 	 */
@@ -423,45 +423,45 @@ final public class Paralexec
 			System.out.println("Unable to mark running processes as waiting: " + e.getMessage());
 		}
 	}
-	
-	
+
+
 	/**
 	 * Kills all processes in the list.
 	 */
 	private void killAllProcesses()
 	{
 		System.out.println("Killing all running processes.");
-		
+
 		for (Map.Entry<Integer, Process> item : this.processList.entrySet())
 		{
 			try
 			{
 //				System.out.println("Killing process: kill -9 " + item.getKey());
-//				
+//
 //				//Process p = Runtime.getRuntime().exec("kill -9 " + item.getKey());
 //				ProcessBuilder ps = new ProcessBuilder(new String[]{"kill", "-9", item.getKey().toString()});
-//				
+//
 //				ps.redirectErrorStream(true);
-//				
+//
 //				Process p = ps.start();
-//				
+//
 //				BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
 //				String line;
 //				while ((line = in.readLine()) != null)
 //				{
 //					System.out.println("Output line: " + line);
 //				}
-//				
+//
 //				p.waitFor();
-//				
+//
 //				System.out.println("Exit value: " + p.exitValue());
-//				
+//
 //				item.getValue().destroy();
-//				
+//
 //				in.close();
-				
+
 				System.out.println("Destroying the process.");
-				
+
 				item.getValue().destroy();
 			}
 			catch (Exception e)
@@ -469,15 +469,15 @@ final public class Paralexec
 				System.out.println("Cannot kill with PID " + item.getKey() + ": " + e.getMessage());
 			}
 		}
-		
+
 		this.processList.clear();
 	}
-	
-	
+
+
 	/**
 	 * Marks selected process as RUNNING.
-	 * 
-	 * @param process 
+	 *
+	 * @param process
 	 */
 	private void markProcessAsRunning(ProcessSetting process)
 	{
@@ -490,12 +490,12 @@ final public class Paralexec
 			writeErrorMessage("Unable to mark process " + process.getId() + " as running: " + e.getMessage());
 		}
 	}
-	
-	
+
+
 	/**
 	 * Marks selected process as FINISHED.
-	 * 
-	 * @param process 
+	 *
+	 * @param process
 	 */
 	private void markProcessAsFinished(ProcessSetting process, String error)
 	{
@@ -512,31 +512,32 @@ final public class Paralexec
 
 	/**
 	 * Manages start of the new process execution.
-	 * 
-	 * @param exec 
+	 *
+	 * @param exec
 	 */
 	public void manageExecStart(Exec exec)
 	{
 		this.addExecToQeue(exec);
 		this.processQueue();
 	}
-	
-	
+
+
 	/**
 	 * Adds process to the process list.
-	 * 
-	 * @param process 
+	 *
+	 * @param pid
+	 * @param process
 	 */
 	public void addProcessToList(int pid, Process process)
 	{
 		this.processList.put(pid, process);
 	}
-	
-	
+
+
 	/**
 	 * Removes process from the process list.
-	 * 
-	 * @param pid 
+	 *
+	 * @param pid
 	 */
 	public void deleteProcessFromList(int pid)
 	{
@@ -546,15 +547,15 @@ final public class Paralexec
 
 	/**
 	 * Manages end of the process execution.
-	 * 
-	 * @param exec 
+	 *
+	 * @param exec
 	 */
 	public void manageExecEnd(Exec exec)
 	{
 		this.runningThreads--;
-		
+
 		this.markProcessAsFinished(exec.getProcess(), exec.getError());
-		
+
 		System.out.println("Ending process (threads count = " + this.runningThreads + ").");
 
 		if (this.runningThreads == 0 && this.execQueue.isEmpty())

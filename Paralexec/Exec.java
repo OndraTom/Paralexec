@@ -33,14 +33,14 @@ final public class Exec implements Runnable
 	 * Exec manager.
 	 */
 	private Paralexec manager;
-	
-	
+
+
 	/**
 	 * Executed processes table.
 	 */
 	private ExecutedProcessesTable processTable;
-	
-	
+
+
 	/**
 	 * Execution error message.
 	 */
@@ -61,8 +61,8 @@ final public class Exec implements Runnable
 		this.scriptPath		= this.scriptsDir + this.process.getScriptPath();
 		this.processTable	= manager.getProcessTable();
 	}
-	
-	
+
+
 	/**
 	 * @return Process setting.
 	 */
@@ -70,8 +70,8 @@ final public class Exec implements Runnable
 	{
 		return this.process;
 	}
-	
-	
+
+
 	/**
 	 * @return Execution error message.
 	 */
@@ -91,16 +91,16 @@ final public class Exec implements Runnable
 			this.manager.manageExecStart(new Exec(child, this.manager));
 		}
 	}
-	
-	
+
+
 	private int getProcessPid(Process process) throws Exception
 	{
 		try
-		{	
+		{
 			Field f = process.getClass().getDeclaredField("pid");
-			
+
 			f.setAccessible(true);
-			
+
 			return f.getInt(process);
 		}
 		catch (Exception e)
@@ -108,16 +108,16 @@ final public class Exec implements Runnable
 			throw new Exception("Cannot get PID from process.");
 		}
 	}
-	
-	
+
+
 	private int addProcessToProcessList(Process process)
 	{
 		int pid = 0;
-			
+
 		try
 		{
 			pid = this.getProcessPid(process);
-			
+
 			System.out.println("Adding pid " + pid);
 
 			this.manager.addProcessToList(pid, process);
@@ -126,7 +126,7 @@ final public class Exec implements Runnable
 		{
 			System.out.println(e.getMessage());
 		}
-		
+
 		return pid;
 	}
 
@@ -140,20 +140,26 @@ final public class Exec implements Runnable
 			System.out.println("Running script: " + this.scriptPath);
 
 			// Start the process and wait until its end.
-			//Process process = new ProcessBuilder(this.scriptPath).start();
 			Process process = Runtime.getRuntime().exec(this.scriptPath);
-			
+
 			int pid = this.addProcessToProcessList(process);
-			
+
+			// We need to vomit outputs for prevent the OS buffer overflow.
+			BufferVomitor inputStreamVomit = new BufferVomitor("stdin", process.getInputStream());
+			BufferVomitor errorStreamVomit = new BufferVomitor("stderr", process.getErrorStream());
+
+			inputStreamVomit.start();
+			errorStreamVomit.start();
+
 			process.waitFor();
-			
+
 			if (pid > 0)
 			{
 				this.manager.deleteProcessFromList(pid);
 			}
 
 			System.out.println("Script " + this.scriptPath + " finished.");
-			
+
 			if (this.manager.isRunning())
 			{
 				this.processChildren();
@@ -162,7 +168,7 @@ final public class Exec implements Runnable
 		catch (Exception e)
 		{
 			this.error = e.getMessage();
-			
+
 			System.out.println("Script " + this.scriptPath + " finished with error: " + e.getMessage());
 		}
 		finally
