@@ -5,20 +5,39 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 /**
+ * Buffer vomitor.
+ *
+ * Vomitor is cleaning the executed processes outputs.
+ * This is prevention against the OS buffer overflow.
  *
  * @author oto
  */
 final public class BufferVomitor implements Runnable
 {
+	/**
+	 * Given stream name.
+	 */
 	private String streamName;
 
 
+	/**
+	 * Given stream - the vomit subject.
+	 */
 	private InputStream stream;
 
 
+	/**
+	 * Vomitor thread.
+	 */
 	private Thread thread;
 
 
+	/**
+	 * Getting stream through constructor.
+	 *
+	 * @param streamName
+	 * @param stream
+	 */
 	public BufferVomitor(String streamName, InputStream stream)
 	{
 		this.streamName = streamName;
@@ -26,6 +45,9 @@ final public class BufferVomitor implements Runnable
 	}
 
 
+	/**
+	 * The thread creation.
+	 */
 	public void start()
 	{
 		this.thread = new Thread(this);
@@ -41,6 +63,7 @@ final public class BufferVomitor implements Runnable
 			InputStreamReader inputReader	= new InputStreamReader(this.stream);
 			BufferedReader bufferReader		= new BufferedReader(inputReader);
 
+			// Cleaning buffer in loop.
 			while (true)
 			{
 				String s = bufferReader.readLine();

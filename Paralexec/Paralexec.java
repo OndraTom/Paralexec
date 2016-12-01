@@ -96,6 +96,11 @@ final public class Paralexec
 	private Queue execQueue;
 
 
+	/**
+	 * Constructor.
+	 *
+	 * @throws Exception
+	 */
 	public Paralexec() throws Exception
 	{
 		this.processTable			= this.getExecutedProcessesTableInstance();
@@ -136,7 +141,7 @@ final public class Paralexec
 		// Handle error.
 		catch (Exception e)
 		{
-			writeErrorMessage("Paralexec execution error: " + e.getMessage());
+			Logger.logError("Paralexec execution error: " + e.getMessage());
 
 			if (paralexec != null)
 			{
@@ -197,7 +202,7 @@ final public class Paralexec
 	 */
 	private void loadProcessTree() throws Exception
 	{
-		System.out.println("Loading process tree.");
+		Logger.log("Loading process tree.");
 
 		try
 		{
@@ -293,6 +298,9 @@ final public class Paralexec
 	}
 
 
+	/**
+	 * Starts the self-monitoring.
+	 */
 	private void startMonitor()
 	{
 		ParalexecMonitor monitor = new ParalexecMonitor(this);
@@ -306,20 +314,20 @@ final public class Paralexec
 	 */
 	private void createRunningFile()
 	{
-		System.out.println("Creating running file: " + this.runningFlagFilePath);
+		Logger.log("Creating running file: " + this.runningFlagFilePath);
 
 		try
 		{
 			if (this.isRunning())
 			{
-				throw new Exception("Paralexec is running.");
+				throw new Exception("Paralexec is already running.");
 			}
 
 			Files.createFile(this.runningFlagFilePath);
 		}
 		catch (Exception e)
 		{
-			writeErrorMessage("Paralexec error while creating the running file: " + e.getMessage());
+			Logger.logError("Paralexec error while creating the running file: " + e.getMessage());
 			System.exit(0);
 		}
 	}
@@ -334,26 +342,15 @@ final public class Paralexec
 		{
 			if (this.isRunning())
 			{
-				System.out.println("Deleting running file.");
+				Logger.log("Deleting running file.");
 
 				Files.delete(this.runningFlagFilePath);
 			}
 		}
 		catch (IOException e)
 		{
-			writeErrorMessage("Paralexec error while deleting running file: " + e.getMessage());
+			Logger.logError("Paralexec error while deleting running file: " + e.getMessage());
 		}
-	}
-
-
-	/**
-	 * Write error message on output.
-	 *
-	 * @param msg
-	 */
-	private static void writeErrorMessage(String msg)
-	{
-		System.out.println(msg);
 	}
 
 
@@ -387,13 +384,7 @@ final public class Paralexec
 			{
 				this.runningThreads++;
 
-//				try
-//				{
-//					Thread.sleep(10000);
-//				}
-//				catch (InterruptedException ex) {}
-
-				System.out.println("Executing process (threads count = " + this.runningThreads + ").");
+				Logger.log("Executing process (threads count = " + this.runningThreads + ").");
 
 				Exec exec = (Exec) this.execQueue.poll();
 
@@ -420,7 +411,7 @@ final public class Paralexec
 		}
 		catch (DbTableException e)
 		{
-			System.out.println("Unable to mark running processes as waiting: " + e.getMessage());
+			Logger.log("Unable to mark running processes as waiting: " + e.getMessage());
 		}
 	}
 
@@ -430,43 +421,19 @@ final public class Paralexec
 	 */
 	private void killAllProcesses()
 	{
-		System.out.println("Killing all running processes.");
+		Logger.log("Killing all running processes.");
 
 		for (Map.Entry<Integer, Process> item : this.processList.entrySet())
 		{
 			try
 			{
-//				System.out.println("Killing process: kill -9 " + item.getKey());
-//
-//				//Process p = Runtime.getRuntime().exec("kill -9 " + item.getKey());
-//				ProcessBuilder ps = new ProcessBuilder(new String[]{"kill", "-9", item.getKey().toString()});
-//
-//				ps.redirectErrorStream(true);
-//
-//				Process p = ps.start();
-//
-//				BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-//				String line;
-//				while ((line = in.readLine()) != null)
-//				{
-//					System.out.println("Output line: " + line);
-//				}
-//
-//				p.waitFor();
-//
-//				System.out.println("Exit value: " + p.exitValue());
-//
-//				item.getValue().destroy();
-//
-//				in.close();
-
-				System.out.println("Destroying the process.");
+				Logger.log("Destroying the process.");
 
 				item.getValue().destroy();
 			}
 			catch (Exception e)
 			{
-				System.out.println("Cannot kill with PID " + item.getKey() + ": " + e.getMessage());
+				Logger.logError("Cannot kill with PID " + item.getKey() + ": " + e.getMessage());
 			}
 		}
 
@@ -487,7 +454,7 @@ final public class Paralexec
 		}
 		catch (DbTableException e)
 		{
-			writeErrorMessage("Unable to mark process " + process.getId() + " as running: " + e.getMessage());
+			Logger.logError("Unable to mark process " + process.getId() + " as running: " + e.getMessage());
 		}
 	}
 
@@ -505,7 +472,7 @@ final public class Paralexec
 		}
 		catch (DbTableException e)
 		{
-			writeErrorMessage("Unable to mark process " + process.getId() + " as finished: " + e.getMessage());
+			Logger.logError("Unable to mark process " + process.getId() + " as finished: " + e.getMessage());
 		}
 	}
 
@@ -556,7 +523,7 @@ final public class Paralexec
 
 		this.markProcessAsFinished(exec.getProcess(), exec.getError());
 
-		System.out.println("Ending process (threads count = " + this.runningThreads + ").");
+		Logger.log("Ending process (threads count = " + this.runningThreads + ").");
 
 		if (this.runningThreads == 0 && this.execQueue.isEmpty())
 		{

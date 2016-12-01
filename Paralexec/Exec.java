@@ -93,6 +93,13 @@ final public class Exec implements Runnable
 	}
 
 
+	/**
+	 * Returns given process PID.
+	 *
+	 * @param process
+	 * @return
+	 * @throws Exception
+	 */
 	private int getProcessPid(Process process) throws Exception
 	{
 		try
@@ -110,6 +117,12 @@ final public class Exec implements Runnable
 	}
 
 
+	/**
+	 * Adds given process to the process list.
+	 *
+	 * @param	process
+	 * @return	Process PID.
+	 */
 	private int addProcessToProcessList(Process process)
 	{
 		int pid = 0;
@@ -118,13 +131,13 @@ final public class Exec implements Runnable
 		{
 			pid = this.getProcessPid(process);
 
-			System.out.println("Adding pid " + pid);
+			Logger.log("Adding pid " + pid);
 
 			this.manager.addProcessToList(pid, process);
 		}
 		catch (Exception e)
 		{
-			System.out.println(e.getMessage());
+			Logger.logError(e.getMessage());
 		}
 
 		return pid;
@@ -137,7 +150,7 @@ final public class Exec implements Runnable
 		// Executes the script and waits until its finished.
 		try
 		{
-			System.out.println("Running script: " + this.scriptPath);
+			Logger.log("Running script: " + this.scriptPath);
 
 			// Start the process and wait until its end.
 			Process process = Runtime.getRuntime().exec(this.scriptPath);
@@ -158,7 +171,7 @@ final public class Exec implements Runnable
 				this.manager.deleteProcessFromList(pid);
 			}
 
-			System.out.println("Script " + this.scriptPath + " finished.");
+			Logger.log("Script " + this.scriptPath + " finished.");
 
 			if (this.manager.isRunning())
 			{
@@ -169,7 +182,7 @@ final public class Exec implements Runnable
 		{
 			this.error = e.getMessage();
 
-			System.out.println("Script " + this.scriptPath + " finished with error: " + e.getMessage());
+			Logger.log("Script " + this.scriptPath + " finished with error: " + e.getMessage());
 		}
 		finally
 		{
