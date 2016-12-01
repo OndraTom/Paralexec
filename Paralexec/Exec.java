@@ -153,7 +153,7 @@ final public class Exec implements Runnable
 			Logger.log("Running script: " + this.scriptPath);
 
 			// Start the process and wait until its end.
-			Process process = Runtime.getRuntime().exec(this.scriptPath);
+			Process process = Runtime.getRuntime().exec(this.scriptPath + " >/dev/null 2>&1 &");
 
 			int pid = this.addProcessToProcessList(process);
 
