@@ -2,7 +2,11 @@ package paralexec;
 
 import Database.Tables.ExecutedProcessesTable;
 import Process.ProcessSetting;
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * Thread of the parallel execution.
@@ -30,6 +34,12 @@ final public class Exec implements Runnable
 
 
 	/**
+	 * File execution template path.
+	 */
+	private String executionTemplate;
+
+
+	/**
 	 * Exec manager.
 	 */
 	private Paralexec manager;
@@ -50,16 +60,31 @@ final public class Exec implements Runnable
 	/**
 	 * Constructor.
 	 *
-	 * @param process
-	 * @param manager
+	 * @param	process
+	 * @param	manager
+	 * @throws	IOException
 	 */
-	public Exec(ProcessSetting process, Paralexec manager)
+	public Exec(ProcessSetting process, Paralexec manager) throws IOException
 	{
-		this.process		= process;
-		this.manager		= manager;
-		this.scriptsDir		= manager.getScriptsDir();
-		this.scriptPath		= this.scriptsDir + this.process.getScriptPath();
-		this.processTable	= manager.getProcessTable();
+		this.process			= process;
+		this.manager			= manager;
+		this.scriptsDir			= manager.getScriptsDir();
+		this.scriptPath			= this.scriptsDir + this.process.getScriptPath();
+		this.executionTemplate	= this.getExecutionTemplateString(this.scriptsDir + this.process.getExecutionTmpPath());
+		this.processTable		= manager.getProcessTable();
+	}
+
+
+	/**
+	 * @param	templatePath
+	 * @return	Execution template string.
+	 * @throws	IOException
+	 */
+	private String getExecutionTemplateString(String templatePath) throws IOException
+	{
+		byte[] encoded = Files.readAllBytes(Paths.get(templatePath));
+
+		return new String(encoded);
 	}
 
 
@@ -88,7 +113,14 @@ final public class Exec implements Runnable
 	{
 		for (ProcessSetting child : this.process.getChildren())
 		{
-			this.manager.manageExecStart(new Exec(child, this.manager));
+			try
+			{
+				this.manager.manageExecStart(new Exec(child, this.manager));
+			}
+			catch (Exception e)
+			{
+				Logger.logError("Cannot create execution for process setting " + child.getId() + ": " + e.getMessage());
+			}
 		}
 	}
 
@@ -144,13 +176,92 @@ final public class Exec implements Runnable
 	}
 
 
+	private String getFileBaseName(File file) throws Exception
+	{
+		String[] parts	= file.getName().split("\\.");
+
+		if (parts.length <= 0)
+		{
+			throw new Exception("Invalid file name.");
+		}
+
+		if (parts.length == 1)
+		{
+			return file.getName();
+		}
+
+		if (parts.length == 2)
+		{
+			return parts[0];
+		}
+
+		String baseName = "";
+
+		for (int i = 0; i < parts.length - 1; i++)
+		{
+			if (baseName.equals(""))
+			{
+				baseName = parts[i];
+			}
+			else
+			{
+				baseName += "." + parts[i];
+			}
+		}
+
+		return baseName;
+	}
+
+
+	private String getFileExecutionCommand(String inputFilePath, String inputFileBaseName)
+	{
+		String command = new String(this.executionTemplate);
+
+		command = command.replace("[file_name]", inputFilePath);
+		command = command.replace("[file_base_name]", inputFileBaseName);
+
+		return command + " >/dev/null 2>&1 &";
+	}
+
+
+	private void runProcessOnFile(String inputFilePath, String inputFileBaseName) throws IOException
+	{
+		Process process = Runtime.getRuntime().exec(this.getFileExecutionCommand(inputFilePath, inputFileBaseName));
+	}
+
+
 	@Override
 	public void run()
 	{
 		// Executes the script and waits until its finished.
 		try
 		{
-			Logger.log("Running script: " + this.scriptPath);
+			String processId = process.getId() + " (" + this.scriptsDir + ")";
+
+			Logger.log("Running process: " + processId);
+
+			// Lets iterate through all files in input directory.
+			File inputDir			= new File(this.process.getInputDirPath());
+			File[] inputDirFiles	= inputDir.listFiles();
+
+			// We throw exception if we cannot load the files.
+			if (inputDirFiles == null)
+			{
+				throw new Exception("Cannot load input dir files (" + this.process.getInputDirPath() + ")");
+			}
+
+			for (File inputFile : inputDirFiles)
+			{
+				// Input file must have also input extension.
+				if (inputFile.getName().endsWith("." + this.process.getInputExt()))
+				{
+					this.runProcessOnFile(inputFile.getAbsolutePath(), this.getFileBaseName(inputFile));
+				}
+			}
+
+
+
+
 
 			// Start the process and wait until its end.
 			Process process = Runtime.getRuntime().exec(this.scriptPath + " >/dev/null 2>&1 &");
@@ -171,7 +282,7 @@ final public class Exec implements Runnable
 				this.manager.deleteProcessFromList(pid);
 			}
 
-			Logger.log("Script " + this.scriptPath + " finished.");
+			Logger.log("Script " + processId + " finished.");
 
 			if (this.manager.isRunning())
 			{

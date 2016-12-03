@@ -13,21 +13,21 @@ import java.util.Map.Entry;
  * @author ODIS
  */
 final public class ProcessSettingTree
-{	
+{
 	private ExecutedProcessesTable processTable;
-	
-	
+
+
 	private final Map<Integer, ProcessSetting> items = new HashMap<>();
-	
-	
+
+
 	public ProcessSettingTree(ExecutedProcessesTable processTable) throws ProcessSettingException
 	{
 		this.processTable = processTable;
-		
+
 		this.loadItems();
 	}
-	
-	
+
+
 	private void loadItems() throws ProcessSettingException
 	{
 		try
@@ -35,7 +35,7 @@ final public class ProcessSettingTree
 			ResultSet rs = processTable.getWaitingProcesses();
 
 			while (rs.next())
-			{	
+			{
 				this.addItem(
 					new ProcessSetting(
 						rs.getInt(1),
@@ -44,7 +44,10 @@ final public class ProcessSettingTree
 						rs.getString(4),
 						rs.getString(5),
 						rs.getString(6),
-						rs.getString(7)
+						rs.getString(7),
+						rs.getString(8),
+						rs.getString(9),
+						rs.getString(10)
 					)
 				);
 			}
@@ -54,17 +57,17 @@ final public class ProcessSettingTree
 			throw new ProcessSettingException("Error while loading tree: " + e.getMessage());
 		}
 	}
-	
-	
+
+
 	private void addItem(ProcessSetting item) throws ProcessSettingException
 	{
 		if (this.items.containsKey(item.getId()))
 		{
 			throw new ProcessSettingException("Duplicite key " + item.getId());
 		}
-		
+
 		this.items.put(item.getId(), item);
-		
+
 		if (!item.isRoot())
 		{
 			if (this.items.containsKey(item.getParentId()))
@@ -77,12 +80,12 @@ final public class ProcessSettingTree
 			}
 		}
 	}
-	
-	
+
+
 	public List<ProcessSetting> getRootItems()
 	{
 		List<ProcessSetting> tree = new ArrayList<>();
-		
+
 		for (Entry<Integer, ProcessSetting> item : this.items.entrySet())
 		{
 			if (item.getValue().isRoot())
@@ -90,7 +93,7 @@ final public class ProcessSettingTree
 				tree.add(item.getValue());
 			}
 		}
-		
+
 		return tree;
 	}
 }

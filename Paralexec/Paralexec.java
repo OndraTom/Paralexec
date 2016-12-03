@@ -282,7 +282,14 @@ final public class Paralexec
 		// We will fill the queue with the root processes.
 		for (ProcessSetting process : this.processTree.getRootItems())
 		{
-			this.addExecToQeue(new Exec(process, this));
+			try
+			{
+				this.addExecToQeue(new Exec(process, this));
+			}
+			catch (Exception e)
+			{
+				Logger.logError("Cannot create execution for process setting " + process.getId() + ": " + e.getMessage());
+			}
 		}
 
 		// If the queue is empty, we are done.
