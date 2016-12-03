@@ -17,13 +17,27 @@ final public class Logger
 	/**
 	 * Log file path.
 	 */
-	private static String loggerFile = "paralexec-log.log";
+	private static String logFile = null;
 
 
 	/**
 	 * Log file writer.
 	 */
 	private static PrintWriter writer = null;
+
+
+	/**
+	 * @return Log file path.
+	 */
+	private static String getLogFile()
+	{
+		if (logFile == null)
+		{
+			logFile = "log_" + getTime();
+		}
+
+		return logFile;
+	}
 
 
 	/**
@@ -34,7 +48,7 @@ final public class Logger
 	{
 		if (writer == null)
 		{
-			FileWriter fw		= new FileWriter(loggerFile, true);
+			FileWriter fw		= new FileWriter(getLogFile(), true);
 			BufferedWriter bw	= new BufferedWriter(fw);
 			writer				= new PrintWriter(bw);
 		}
