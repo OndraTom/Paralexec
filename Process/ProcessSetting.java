@@ -21,9 +21,6 @@ final public class ProcessSetting
 	private String scriptPath;
 
 
-	private String executionTmpPath;
-
-
 	private String inputDirPath;
 
 
@@ -50,7 +47,6 @@ final public class ProcessSetting
 			int		parentId,
 			String	state,
 			String	scriptPath,
-			String	executionTmpPath,
 			String	inputDirPath,
 			String	inputExt,
 			String	outputDirPath,
@@ -62,7 +58,6 @@ final public class ProcessSetting
 		this.parentId			= parentId;
 		this.state				= state;
 		this.scriptPath			= scriptPath;
-		this.executionTmpPath	= executionTmpPath;
 		this.inputDirPath		= inputDirPath;
 		this.inputExt			= inputExt;
 		this.outputDirPath		= outputDirPath;
@@ -83,8 +78,8 @@ final public class ProcessSetting
 	{
 		return this.parentId;
 	}
-
-
+	
+	
 	public boolean isRoot()
 	{
 		return this.isRoot;
@@ -113,13 +108,7 @@ final public class ProcessSetting
 	{
 		return this.scriptPath;
 	}
-
-
-	public String getExecutionTmpPath()
-	{
-		return this.executionTmpPath;
-	}
-
+	
 
 	public String getInputDirPath()
 	{
@@ -130,6 +119,12 @@ final public class ProcessSetting
 	public String getInputExt()
 	{
 		return this.inputExt;
+	}
+	
+	
+	public String getOutputDirPath()
+	{
+		return this.outputDirPath;
 	}
 
 

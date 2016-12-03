@@ -46,8 +46,7 @@ final public class ProcessSettingTree
 						rs.getString(6),
 						rs.getString(7),
 						rs.getString(8),
-						rs.getString(9),
-						rs.getString(10)
+						rs.getString(9)
 					)
 				);
 			}

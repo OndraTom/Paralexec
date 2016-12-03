@@ -2,10 +2,15 @@ package paralexec;
 
 import Database.Tables.ExecutedProcessesTable;
 import Process.ProcessSetting;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
@@ -22,21 +27,9 @@ final public class Exec implements Runnable
 
 
 	/**
-	 * Processes scripts directory.
-	 */
-	private String scriptsDir;
-
-
-	/**
 	 * Executing script path.
 	 */
 	private String scriptPath;
-
-
-	/**
-	 * File execution template path.
-	 */
-	private String executionTemplate;
 
 
 	/**
@@ -68,23 +61,8 @@ final public class Exec implements Runnable
 	{
 		this.process			= process;
 		this.manager			= manager;
-		this.scriptsDir			= manager.getScriptsDir();
-		this.scriptPath			= this.scriptsDir + this.process.getScriptPath();
-		this.executionTemplate	= this.getExecutionTemplateString(this.scriptsDir + this.process.getExecutionTmpPath());
+		this.scriptPath			= this.process.getScriptPath();
 		this.processTable		= manager.getProcessTable();
-	}
-
-
-	/**
-	 * @param	templatePath
-	 * @return	Execution template string.
-	 * @throws	IOException
-	 */
-	private String getExecutionTemplateString(String templatePath) throws IOException
-	{
-		byte[] encoded = Files.readAllBytes(Paths.get(templatePath));
-
-		return new String(encoded);
 	}
 
 
@@ -174,59 +152,94 @@ final public class Exec implements Runnable
 
 		return pid;
 	}
-
-
-	private String getFileBaseName(File file) throws Exception
+	
+	
+	/**
+	 * Deletes all files in given directory.
+	 * 
+	 * @param outputDirPath 
+	 */
+	private void cleanOutputDir(String outputDirPath)
 	{
-		String[] parts	= file.getName().split("\\.");
-
-		if (parts.length <= 0)
+		File outputDir			= new File(outputDirPath);
+		File[] outputDirFiles	= outputDir.listFiles();
+		
+		if (outputDirFiles != null)
 		{
-			throw new Exception("Invalid file name.");
-		}
-
-		if (parts.length == 1)
-		{
-			return file.getName();
-		}
-
-		if (parts.length == 2)
-		{
-			return parts[0];
-		}
-
-		String baseName = "";
-
-		for (int i = 0; i < parts.length - 1; i++)
-		{
-			if (baseName.equals(""))
+			for (File outputFile : outputDirFiles)
 			{
-				baseName = parts[i];
-			}
-			else
-			{
-				baseName += "." + parts[i];
+				if (outputFile.isFile())
+				{
+					outputFile.delete();
+				}
 			}
 		}
-
-		return baseName;
 	}
 
 
-	private String getFileExecutionCommand(String inputFilePath, String inputFileBaseName)
+	/**
+	 * It executes the shell script which echoes the CLI command.
+	 * 
+	 * @param	file
+	 * @return	Command for input file execution.
+	 */
+	private String getFileExecutionCommand(File file) throws IOException, InterruptedException
 	{
-		String command = new String(this.executionTemplate);
-
-		command = command.replace("[file_name]", inputFilePath);
-		command = command.replace("[file_base_name]", inputFileBaseName);
-
-		return command + " >/dev/null 2>&1 &";
+		Path shellPath		= Paths.get(this.scriptPath);
+		Charset charset		= StandardCharsets.UTF_8;
+		String shellContent = new String(Files.readAllBytes(shellPath), charset);
+		shellContent		= shellContent.replace("[input_file_name]", file.getAbsolutePath());
+		
+		Files.write(shellPath, shellContent.getBytes(charset));
+		
+		// BE AWARE! Vomitor is not working here! We need seqence processing
+		// of the stream here (it's too quick for Vomitor to take it).
+		Process shellProcess	= Runtime.getRuntime().exec(this.scriptPath);
+		BufferedReader reader	= new BufferedReader(new InputStreamReader(shellProcess.getInputStream()));
+		
+		String line, command = "";
+		
+		while ((line = reader.readLine()) != null)
+		{
+			command += line;
+		}
+		
+		shellProcess.waitFor();
+		
+		return command;
 	}
 
 
-	private void runProcessOnFile(String inputFilePath, String inputFileBaseName) throws IOException
+	/**
+	 * Executes process on given input file.
+	 * 
+	 * @param	inputFile
+	 * @throws	IOException
+	 * @throws	InterruptedException 
+	 */
+	private void runProcessOnFile(File inputFile) throws IOException, InterruptedException
 	{
-		Process process = Runtime.getRuntime().exec(this.getFileExecutionCommand(inputFilePath, inputFileBaseName));
+		String command = this.getFileExecutionCommand(inputFile);
+		
+		Logger.log("Executing cmd: " + command);
+		
+		Process process = Runtime.getRuntime().exec(command);
+		
+		int pid = this.addProcessToProcessList(process);
+
+		// We need to vomit outputs for prevent the OS buffer overflow.
+		BufferVomitor inputStreamVomit = new BufferVomitor("stdin", process.getInputStream());
+		BufferVomitor errorStreamVomit = new BufferVomitor("stderr", process.getErrorStream());
+
+		inputStreamVomit.start();
+		errorStreamVomit.start();
+
+		process.waitFor();
+
+		if (pid > 0)
+		{
+			this.manager.deleteProcessFromList(pid);
+		}
 	}
 
 
@@ -236,9 +249,7 @@ final public class Exec implements Runnable
 		// Executes the script and waits until its finished.
 		try
 		{
-			String processId = process.getId() + " (" + this.scriptsDir + ")";
-
-			Logger.log("Running process: " + processId);
+			Logger.log("Running process: " + this.process.getId());
 
 			// Lets iterate through all files in input directory.
 			File inputDir			= new File(this.process.getInputDirPath());
@@ -249,40 +260,19 @@ final public class Exec implements Runnable
 			{
 				throw new Exception("Cannot load input dir files (" + this.process.getInputDirPath() + ")");
 			}
+			
+			this.cleanOutputDir(this.process.getOutputDirPath());
 
 			for (File inputFile : inputDirFiles)
 			{
 				// Input file must have also input extension.
 				if (inputFile.getName().endsWith("." + this.process.getInputExt()))
 				{
-					this.runProcessOnFile(inputFile.getAbsolutePath(), this.getFileBaseName(inputFile));
+					this.runProcessOnFile(inputFile);
 				}
 			}
 
-
-
-
-
-			// Start the process and wait until its end.
-			Process process = Runtime.getRuntime().exec(this.scriptPath + " >/dev/null 2>&1 &");
-
-			int pid = this.addProcessToProcessList(process);
-
-			// We need to vomit outputs for prevent the OS buffer overflow.
-			BufferVomitor inputStreamVomit = new BufferVomitor("stdin", process.getInputStream());
-			BufferVomitor errorStreamVomit = new BufferVomitor("stderr", process.getErrorStream());
-
-			inputStreamVomit.start();
-			errorStreamVomit.start();
-
-			process.waitFor();
-
-			if (pid > 0)
-			{
-				this.manager.deleteProcessFromList(pid);
-			}
-
-			Logger.log("Script " + processId + " finished.");
+			Logger.log("Script " + this.process.getId() + " finished.");
 
 			if (this.manager.isRunning())
 			{

@@ -21,7 +21,7 @@ import java.util.Queue;
  *
  * Example of Paralexec call:
  *
- *	java -jar Paralexec.jar "processes-scripts/" 10
+ *	java -jar Paralexec.jar 10
  *
  * Parameters:
  *
@@ -54,12 +54,6 @@ final public class Paralexec
 	 * Current directory path.
 	 */
 	private String currentDir;
-
-
-	/**
-	 * Process scripts directory.
-	 */
-	private String scriptsDir;
 
 
 	/**
@@ -123,16 +117,10 @@ final public class Paralexec
 		{
 			paralexec = new Paralexec();
 
-			// Mandatory arguments validation.
-			paralexec.checkArgs(args);
-
-			// Setting the processes scripts directory.
-			paralexec.setScriptsDir(args[0]);
-
 			// Set the maximum number of running threads if it's provided.
-			if (args.length >= 2)
+			if (args.length >= 1)
 			{
-				paralexec.setRunningThreadsMaxCount(Integer.parseInt(args[1]));
+				paralexec.setRunningThreadsMaxCount(Integer.parseInt(args[0]));
 			}
 
 			// Execute the process tree.
@@ -157,15 +145,6 @@ final public class Paralexec
 	public boolean isRunning()
 	{
 		return Files.exists(this.runningFlagFilePath);
-	}
-
-
-	/**
-	 * @return Processes scripts direcotry.
-	 */
-	public String getScriptsDir()
-	{
-		return this.scriptsDir;
 	}
 
 
@@ -216,17 +195,6 @@ final public class Paralexec
 
 
 	/**
-	 * Sets the process scripts directory.
-	 *
-	 * @param scriptsDir
-	 */
-	private void setScriptsDir(String scriptsDir)
-	{
-		this.scriptsDir = scriptsDir;
-	}
-
-
-	/**
 	 * Sets the maximum number of running threads.
 	 *
 	 * @param	count
@@ -252,21 +220,6 @@ final public class Paralexec
 		File currentDir = new File(".");
 
 		return currentDir.getAbsolutePath();
-	}
-
-
-	/**
-	 * Checks the CLI arguments.
-	 *
-	 * @param	args
-	 * @throws	Exception
-	 */
-	private void checkArgs(String[] args) throws Exception
-	{
-		if (args.length < 1)
-		{
-			throw new Exception("Processes scripts directory not provided.");
-		}
 	}
 
 
