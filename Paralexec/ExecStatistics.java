@@ -36,7 +36,7 @@ final public class ExecStatistics
 	 * @param fileRate 
 	 */
 	public static void addProcessFileRate(int processSettingId, long fileRate)
-	{
+	{	
 		if (!isProcessRegistered(processSettingId))
 		{
 			List<Long> fileRates = new ArrayList<>();

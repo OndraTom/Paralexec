@@ -46,7 +46,13 @@ final public class ExecMonitor implements Runnable
 	/**
 	 * Suspicious running time without output file change.
 	 */
-	private long suspiciousRunningTime = 1000 * 60 * 60; // 60 minutes
+	private long suspiciousRunningTime = 60 * 60; // 60 minutes
+	
+	
+	/**
+	 * Minimal allowed running time without output file change.
+	 */
+	private long minimalAllowedRunningTime = 60 * 1; // 1 minute
 	
 	
 	/**
@@ -147,9 +153,10 @@ final public class ExecMonitor implements Runnable
 	 */
 	private Boolean isExecOverTime()
 	{
-		// If the process is not registered in statistics, it means that it's
+		// - If the process is not registered in statistics, it means that it's
 		// first processing file. The first time in row has no execution limits.
-		if (!ExecStatistics.isProcessRegistered(this.getProcessSettingId()))
+		// - The script can run at least for the minimal allowed running time.
+		if (!ExecStatistics.isProcessRegistered(this.getProcessSettingId()) || this.getRunningTime() < this.minimalAllowedRunningTime)
 		{
 			return false;
 		}
@@ -199,8 +206,11 @@ final public class ExecMonitor implements Runnable
 			{
 				long fileAvarageRate	= ExecStatistics.getProcessFileAvarageRate(this.getProcessSettingId());
 				long fileRate			= fileAvarageRate * FILE_RATE_RESERVE_MULTIPLE;
+				long finishTime			= fileRate * this.monitoredFileSize;
 
-				return fileRate * this.monitoredFileSize;
+				Logger.log("Calculated finish time for process setting " + this.getProcessSettingId() + " is " + finishTime);
+				
+				return finishTime;
 			}
 			catch (ExecStatisticsException e) {}
 		}
@@ -233,7 +243,14 @@ final public class ExecMonitor implements Runnable
 		// Save the last completed file fate.
 		if (this.monitoredFileSize > 0)
 		{
-			ExecStatistics.addProcessFileRate(this.getProcessSettingId(), this.getRunningTime() / this.monitoredFileSize);
+			double runningTime	= this.getRunningTime();
+			long fileRate		= (long) Math.ceil(runningTime / this.monitoredFileSize);
+			
+			Logger.log("Adding process setting " + this.getProcessSettingId() 
+					+ " file rate: " + fileRate 
+					+ " (running time: " + runningTime + ", file size: " + this.monitoredFileSize + ")");
+			
+			ExecStatistics.addProcessFileRate(this.getProcessSettingId(), fileRate);
 		}
 		
 		long fileSize = newMonitoredFile.length() / 1024;
