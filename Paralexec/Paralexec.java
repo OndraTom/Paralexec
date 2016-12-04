@@ -25,7 +25,6 @@ import java.util.Queue;
  *
  * Parameters:
  *
- *  - processes folders and files path
  *  - maximum number of running threads (optional)
  *
  * @author oto
@@ -398,6 +397,23 @@ final public class Paralexec
 		}
 
 		this.processList.clear();
+	}
+	
+	
+	/**
+	 * Finds process in process list and kills it.
+	 * 
+	 * @param pid 
+	 */
+	public void killProcessById(int pid)
+	{
+		Process process = this.processList.get(pid);
+		
+		if (process != null)
+		{
+			process.destroy();
+			this.deleteProcessFromList(pid);
+		}
 	}
 
 

@@ -1,6 +1,5 @@
 package paralexec;
 
-import Database.Tables.ExecutedProcessesTable;
 import Process.ProcessSetting;
 import java.io.BufferedReader;
 import java.io.File;
@@ -39,15 +38,33 @@ final public class Exec implements Runnable
 
 
 	/**
-	 * Executed processes table.
-	 */
-	private ExecutedProcessesTable processTable;
-
-
-	/**
 	 * Execution error message.
 	 */
 	private String error = null;
+	
+	
+	/**
+	 * Number of processed input files.
+	 */
+	private int processedFilesCount = 0;
+	
+	
+	/**
+	 * Exec monitor.
+	 */
+	private ExecMonitor monitor = null;
+	
+	
+	/**
+	 * Interrupted flag.
+	 */
+	private Boolean interrupted = false;
+	
+	
+	/**
+	 * Running process ID (PID).
+	 */
+	private int runningProcessId = 0;
 
 
 	/**
@@ -59,10 +76,27 @@ final public class Exec implements Runnable
 	 */
 	public Exec(ProcessSetting process, Paralexec manager) throws IOException
 	{
-		this.process			= process;
-		this.manager			= manager;
-		this.scriptPath			= this.process.getScriptPath();
-		this.processTable		= manager.getProcessTable();
+		this.process	= process;
+		this.manager	= manager;
+		this.scriptPath	= this.process.getScriptPath();
+	}
+	
+	
+	/**
+	 * Constructor for cloning the Exec.
+	 * 
+	 * Using the Cloneable interface is not recommended.
+	 * 
+	 * @param origin 
+	 */
+	public Exec(Exec origin)
+	{
+		this.process				= origin.process;
+		this.scriptPath				= origin.scriptPath;
+		this.manager				= origin.manager;
+		this.error					= origin.error;
+		this.processedFilesCount	= origin.processedFilesCount;
+		this.monitor				= origin.monitor;
 	}
 
 
@@ -185,16 +219,23 @@ final public class Exec implements Runnable
 	 */
 	private String getFileExecutionCommand(File file) throws IOException, InterruptedException
 	{
+		String tmpPath		= this.scriptPath + ".tmp.sh";
 		Path shellPath		= Paths.get(this.scriptPath);
 		Charset charset		= StandardCharsets.UTF_8;
 		String shellContent = new String(Files.readAllBytes(shellPath), charset);
 		shellContent		= shellContent.replace("[input_file_name]", file.getAbsolutePath());
 		
-		Files.write(shellPath, shellContent.getBytes(charset));
+		Files.write(Paths.get(tmpPath), shellContent.getBytes(charset));
+		
+		// Setting the tmp file permissions.
+		File tmpFile = new File(tmpPath);
+		tmpFile.setReadable(true, false);
+		tmpFile.setWritable(true, false);
+		tmpFile.setExecutable(true, false);
 		
 		// BE AWARE! Vomitor is not working here! We need seqence processing
 		// of the stream here (it's too quick for Vomitor to take it).
-		Process shellProcess	= Runtime.getRuntime().exec(this.scriptPath);
+		Process shellProcess	= Runtime.getRuntime().exec(tmpPath);
 		BufferedReader reader	= new BufferedReader(new InputStreamReader(shellProcess.getInputStream()));
 		
 		String line, command = "";
@@ -226,6 +267,8 @@ final public class Exec implements Runnable
 		Process process = Runtime.getRuntime().exec(command);
 		
 		int pid = this.addProcessToProcessList(process);
+		
+		this.runningProcessId = pid;
 
 		// We need to vomit outputs for prevent the OS buffer overflow.
 		BufferVomitor inputStreamVomit = new BufferVomitor("stdin", process.getInputStream());
@@ -240,6 +283,30 @@ final public class Exec implements Runnable
 		{
 			this.manager.deleteProcessFromList(pid);
 		}
+	}
+	
+	
+	/**
+	 * Starts Exec monitor.
+	 * 
+	 * @return monitor
+	 */
+	private ExecMonitor startMonitor()
+	{
+		if (this.monitor == null)
+		{
+			ExecMonitor execMonitor = new ExecMonitor(this);
+
+			execMonitor.start();
+			
+			this.monitor = execMonitor;
+		}
+		else
+		{
+			this.monitor.reset();
+		}
+		
+		return this.monitor;
 	}
 
 
@@ -262,15 +329,37 @@ final public class Exec implements Runnable
 			}
 			
 			this.cleanOutputDir(this.process.getOutputDirPath());
-
-			for (File inputFile : inputDirFiles)
+			
+			// Monitoring of the running processes.
+			ExecMonitor execMonitor = this.startMonitor();
+			
+			for (int i = 0; i < inputDirFiles.length; i++)
 			{
-				// Input file must have also input extension.
-				if (inputFile.getName().endsWith("." + this.process.getInputExt()))
+				// If we start the Exec with positive count of processed files,
+				// we will skip those.
+				if (i < this.processedFilesCount)
 				{
-					this.runProcessOnFile(inputFile);
+					continue;
 				}
+				
+				// Input file must have also input extension.
+				if (inputDirFiles[i].getName().endsWith("." + this.process.getInputExt()))
+				{
+					execMonitor.reset(inputDirFiles[i]);
+					
+					this.runProcessOnFile(inputDirFiles[i]);
+				}
+				
+				if (this.interrupted)
+				{
+					throw new ExecInteruptedException("Exec has been interupted by monitor.");
+				}
+				
+				this.processedFilesCount++;
 			}
+			
+			// Closing monitor.
+			execMonitor.end();
 
 			Logger.log("Script " + this.process.getId() + " finished.");
 
@@ -279,15 +368,28 @@ final public class Exec implements Runnable
 				this.processChildren();
 			}
 		}
+		// Monitor interruption.
+		catch (ExecInteruptedException e)
+		{
+			Logger.log(e.getMessage());
+		}
 		catch (Exception e)
 		{
 			this.error = e.getMessage();
 
-			Logger.log("Script " + this.scriptPath + " finished with error: " + e.getMessage());
+			Logger.logError("Script " + this.scriptPath + " finished with error: " + e.getMessage());
 		}
 		finally
 		{
-			this.manager.manageExecEnd(this);
+			if (this.monitor != null)
+			{
+				this.monitor.end();
+			}
+			
+			if (!this.interrupted)
+			{
+				this.manager.manageExecEnd(this);
+			}
 		}
 	}
 
@@ -300,5 +402,16 @@ final public class Exec implements Runnable
 		Thread t = new Thread(this);
 
 		t.start();
+	}
+	
+	
+	/**
+	 * Interrupts the running Exec.
+	 */
+	public void interrupt()
+	{
+		this.interrupted = true;
+		
+		this.manager.killProcessById(this.runningProcessId);
 	}
 }

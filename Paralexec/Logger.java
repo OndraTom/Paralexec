@@ -1,6 +1,7 @@
 package paralexec;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -33,7 +34,9 @@ final public class Logger
 	{
 		if (logFile == null)
 		{
-			logFile = "log_" + getTime();
+			File currentDir = new File(".");
+			
+			logFile = currentDir.getAbsolutePath() + File.separator + "log_" + getTime();
 		}
 
 		return logFile;
@@ -62,7 +65,7 @@ final public class Logger
 	 */
 	private static String getTime()
 	{
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
 
 		return dateFormat.format(new Date());
 	}
