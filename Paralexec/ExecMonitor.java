@@ -123,9 +123,9 @@ final public class ExecMonitor implements Runnable
 				}
 				catch (InterruptedException e) {}
 
-				// If data are changing, we ceep continue.
 				// If the Exec is processing first file in a row, we ceep continue.
-				if (this.outputDirectoryMonitor.hasDirectoryChanged() || !ExecStatistics.isProcessRegistered(this.getProcessSettingId()))
+				// If data are changing, we ceep continue.
+				if (!ExecStatistics.isProcessRegistered(this.getProcessSettingId()) || this.outputDirectoryMonitor.hasDirectoryChanged())
 				{
 					continue;
 				}
