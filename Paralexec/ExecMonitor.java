@@ -191,8 +191,8 @@ final public class ExecMonitor implements Runnable
 		{
 			try
 			{
-				long fileAvarageRate	= ExecStatistics.getProcessFileAvarageRate(this.getProcessSettingId());
-				long fileRate			= fileAvarageRate * FILE_RATE_RESERVE_MULTIPLE;
+				double fileAvarageRate	= ExecStatistics.getProcessFileAvarageRate(this.getProcessSettingId());
+				long fileRate			= (long) (fileAvarageRate * FILE_RATE_RESERVE_MULTIPLE);
 				long finishTime			= fileRate * this.monitoredFileSize;
 
 				Logger.log("Calculated finish time for process setting " + this.getProcessSettingId() + " is " + finishTime);
@@ -231,7 +231,7 @@ final public class ExecMonitor implements Runnable
 		if (this.monitoredFileSize > 0)
 		{
 			double runningTime	= this.getRunningTime();
-			long fileRate		= (long) Math.ceil(runningTime / this.monitoredFileSize);
+			double fileRate		= Math.ceil(runningTime / this.monitoredFileSize);
 
 			Logger.log("Adding process setting " + this.getProcessSettingId()
 					+ " file rate: " + fileRate
