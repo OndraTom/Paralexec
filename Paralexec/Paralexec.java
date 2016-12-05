@@ -90,6 +90,12 @@ final public class Paralexec
 
 
 	/**
+	 * Executed execs list.
+	 */
+	private Map<Integer, Exec> runningExecs = new HashMap<>();
+
+
+	/**
 	 * Constructor.
 	 *
 	 * @throws Exception
@@ -228,7 +234,6 @@ final public class Paralexec
 	private void processSettings()
 	{
 		this.createRunningFile();
-
 		this.startMonitor();
 
 		// We will fill the queue with the root processes.
@@ -347,6 +352,7 @@ final public class Paralexec
 
 				Exec exec = (Exec) this.execQueue.poll();
 
+				this.addRunningExec(exec);
 				this.markProcessAsRunning(exec.getProcess());
 
 				exec.start();
@@ -358,10 +364,45 @@ final public class Paralexec
 
 
 	/**
+	 * Adds exec into the list of running execs.
+	 *
+	 * @param exec
+	 */
+	private void addRunningExec(Exec exec)
+	{
+		this.runningExecs.put(exec.getProcess().getId(), exec);
+	}
+
+
+	/**
+	 * Deletes exec from the list of running execs.
+	 *
+	 * @param exec
+	 */
+	private void deleteRunningExec(Exec exec)
+	{
+		this.runningExecs.remove(exec.getProcess().getId());
+	}
+
+
+	/**
+	 * Stops all execs from the list of running execs.
+	 */
+	private void interruptAllRunningExecs()
+	{
+		for (Map.Entry<Integer, Exec> item : this.runningExecs.entrySet())
+		{
+			item.getValue().interrupt();
+		}
+	}
+
+
+	/**
 	 * Stops processing.
 	 */
 	public void stopProcessing()
 	{
+		this.interruptAllRunningExecs();
 		this.killAllProcesses();
 
 		try
@@ -398,17 +439,17 @@ final public class Paralexec
 
 		this.processList.clear();
 	}
-	
-	
+
+
 	/**
 	 * Finds process in process list and kills it.
-	 * 
-	 * @param pid 
+	 *
+	 * @param pid
 	 */
 	public void killProcessById(int pid)
 	{
 		Process process = this.processList.get(pid);
-		
+
 		if (process != null)
 		{
 			process.destroy();
@@ -454,18 +495,6 @@ final public class Paralexec
 
 
 	/**
-	 * Manages start of the new process execution.
-	 *
-	 * @param exec
-	 */
-	public void manageExecStart(Exec exec)
-	{
-		this.addExecToQeue(exec);
-		this.processQueue();
-	}
-
-
-	/**
 	 * Adds process to the process list.
 	 *
 	 * @param pid
@@ -489,6 +518,30 @@ final public class Paralexec
 
 
 	/**
+	 * Manages start of the new process execution.
+	 *
+	 * @param exec
+	 */
+	public void manageExecStart(Exec exec)
+	{
+		this.addExecToQeue(exec);
+		this.processQueue();
+	}
+
+
+	/**
+	 * Manages the exec restart.
+	 *
+	 * @param newExec
+	 */
+	public void manageExecRestart(Exec newExec)
+	{
+		// Rewrite the old exec with the new one.
+		this.addRunningExec(newExec);
+	}
+
+
+	/**
 	 * Manages end of the process execution.
 	 *
 	 * @param exec
@@ -497,6 +550,7 @@ final public class Paralexec
 	{
 		this.runningThreads--;
 
+		this.deleteRunningExec(exec);
 		this.markProcessAsFinished(exec.getProcess(), exec.getError());
 
 		Logger.log("Ending process (threads count = " + this.runningThreads + ").");
@@ -509,5 +563,17 @@ final public class Paralexec
 		{
 			this.processQueue();
 		}
+	}
+
+
+	/**
+	 * Manages exec interruption.
+	 *
+	 * @param exec
+	 */
+	public void manageExecInterruption(Exec exec)
+	{
+		this.deleteRunningExec(exec);
+		this.killProcessById(exec.getRunningProcessId());
 	}
 }

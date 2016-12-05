@@ -41,30 +41,30 @@ final public class Exec implements Runnable
 	 * Execution error message.
 	 */
 	private String error = null;
-	
-	
+
+
 	/**
 	 * Number of processed input files.
 	 */
 	private int processedFilesCount = 0;
-	
-	
-	/**
-	 * Exec monitor.
-	 */
-	private ExecMonitor monitor = null;
-	
-	
+
+
 	/**
 	 * Interrupted flag.
 	 */
 	private Boolean interrupted = false;
-	
-	
+
+
 	/**
 	 * Running process ID (PID).
 	 */
 	private int runningProcessId = 0;
+
+
+	/**
+	 * Running flag.
+	 */
+	private Boolean isRunning = true;
 
 
 	/**
@@ -80,14 +80,14 @@ final public class Exec implements Runnable
 		this.manager	= manager;
 		this.scriptPath	= this.process.getScriptPath();
 	}
-	
-	
+
+
 	/**
 	 * Constructor for cloning the Exec.
-	 * 
+	 *
 	 * Using the Cloneable interface is not recommended.
-	 * 
-	 * @param origin 
+	 *
+	 * @param origin
 	 */
 	public Exec(Exec origin)
 	{
@@ -96,7 +96,6 @@ final public class Exec implements Runnable
 		this.manager				= origin.manager;
 		this.error					= origin.error;
 		this.processedFilesCount	= origin.processedFilesCount;
-		this.monitor				= origin.monitor;
 	}
 
 
@@ -115,6 +114,15 @@ final public class Exec implements Runnable
 	public String getError()
 	{
 		return this.error;
+	}
+
+
+	/**
+	 * @return Running process ID.
+	 */
+	public int getRunningProcessId()
+	{
+		return this.runningProcessId;
 	}
 
 
@@ -186,18 +194,18 @@ final public class Exec implements Runnable
 
 		return pid;
 	}
-	
-	
+
+
 	/**
 	 * Deletes all files in given directory.
-	 * 
-	 * @param outputDirPath 
+	 *
+	 * @param outputDirPath
 	 */
 	private void cleanOutputDir(String outputDirPath)
 	{
 		File outputDir			= new File(outputDirPath);
 		File[] outputDirFiles	= outputDir.listFiles();
-		
+
 		if (outputDirFiles != null)
 		{
 			for (File outputFile : outputDirFiles)
@@ -213,7 +221,7 @@ final public class Exec implements Runnable
 
 	/**
 	 * It executes the shell script which echoes the CLI command.
-	 * 
+	 *
 	 * @param	file
 	 * @return	Command for input file execution.
 	 */
@@ -224,50 +232,50 @@ final public class Exec implements Runnable
 		Charset charset		= StandardCharsets.UTF_8;
 		String shellContent = new String(Files.readAllBytes(shellPath), charset);
 		shellContent		= shellContent.replace("[input_file_name]", file.getAbsolutePath());
-		
+
 		Files.write(Paths.get(tmpPath), shellContent.getBytes(charset));
-		
+
 		// Setting the tmp file permissions.
 		File tmpFile = new File(tmpPath);
 		tmpFile.setReadable(true, false);
 		tmpFile.setWritable(true, false);
 		tmpFile.setExecutable(true, false);
-		
+
 		// BE AWARE! Vomitor is not working here! We need seqence processing
 		// of the stream here (it's too quick for Vomitor to take it).
 		Process shellProcess	= Runtime.getRuntime().exec(tmpPath);
 		BufferedReader reader	= new BufferedReader(new InputStreamReader(shellProcess.getInputStream()));
-		
+
 		String line, command = "";
-		
+
 		while ((line = reader.readLine()) != null)
 		{
 			command += line;
 		}
-		
+
 		shellProcess.waitFor();
-		
+
 		return command;
 	}
 
 
 	/**
 	 * Executes process on given input file.
-	 * 
+	 *
 	 * @param	inputFile
 	 * @throws	IOException
-	 * @throws	InterruptedException 
+	 * @throws	InterruptedException
 	 */
 	private void runProcessOnFile(File inputFile) throws IOException, InterruptedException
 	{
 		String command = this.getFileExecutionCommand(inputFile);
-		
+
 		Logger.log("Executing cmd: " + command);
-		
+
 		Process process = Runtime.getRuntime().exec(command);
-		
+
 		int pid = this.addProcessToProcessList(process);
-		
+
 		this.runningProcessId = pid;
 
 		// We need to vomit outputs for prevent the OS buffer overflow.
@@ -284,36 +292,13 @@ final public class Exec implements Runnable
 			this.manager.deleteProcessFromList(pid);
 		}
 	}
-	
-	
-	/**
-	 * Starts Exec monitor.
-	 * 
-	 * @return monitor
-	 */
-	private ExecMonitor startMonitor()
-	{
-		if (this.monitor == null)
-		{
-			ExecMonitor execMonitor = new ExecMonitor(this);
-
-			execMonitor.start();
-			
-			this.monitor = execMonitor;
-		}
-		else
-		{
-			this.monitor.reset();
-		}
-		
-		return this.monitor;
-	}
 
 
 	@Override
 	public void run()
 	{
-		// Executes the script and waits until its finished.
+		ExecMonitor execMonitor = null;
+
 		try
 		{
 			Logger.log("Running process: " + this.process.getId());
@@ -327,43 +312,61 @@ final public class Exec implements Runnable
 			{
 				throw new Exception("Cannot load input dir files (" + this.process.getInputDirPath() + ")");
 			}
-			
-			this.cleanOutputDir(this.process.getOutputDirPath());
-			
+
+			// We will clean the output file only if we'll not skip any input file.
+			if (this.processedFilesCount == 0)
+			{
+				this.cleanOutputDir(this.process.getOutputDirPath());
+			}
+
 			// Monitoring of the running processes.
-			ExecMonitor execMonitor = this.startMonitor();
-			
+			execMonitor = new ExecMonitor(this);
+
 			for (int i = 0; i < inputDirFiles.length; i++)
 			{
+				// Break the cycle if the exec is stopped.
+				if (!this.isRunning)
+				{
+					break;
+				}
+
 				// If we start the Exec with positive count of processed files,
 				// we will skip those.
 				if (i < this.processedFilesCount)
 				{
 					continue;
 				}
-				
+
 				// Input file must have also input extension.
 				if (inputDirFiles[i].getName().endsWith("." + this.process.getInputExt()))
 				{
 					execMonitor.reset(inputDirFiles[i]);
-					
+
 					this.runProcessOnFile(inputDirFiles[i]);
 				}
-				
+
 				if (this.interrupted)
 				{
 					throw new ExecInteruptedException("Exec has been interupted by monitor.");
 				}
-				
+
 				this.processedFilesCount++;
 			}
-			
+
 			// Closing monitor.
-			execMonitor.end();
+			execMonitor.stop();
 
-			Logger.log("Script " + this.process.getId() + " finished.");
+			if (this.isRunning)
+			{
+				Logger.log("Exec for process " + this.process.getId() + " finished.");
+			}
+			else
+			{
+				Logger.log("Exec for process " + this.process.getId() + " has been stopped.");
+			}
 
-			if (this.manager.isRunning())
+			// If we can run children, we'll do it.
+			if (this.manager.isRunning() && this.isRunning)
 			{
 				this.processChildren();
 			}
@@ -371,7 +374,7 @@ final public class Exec implements Runnable
 		// Monitor interruption.
 		catch (ExecInteruptedException e)
 		{
-			Logger.log(e.getMessage());
+			Logger.log("Exec for process " + this.process.getId() + " has been interrupted: " + e.getMessage());
 		}
 		catch (Exception e)
 		{
@@ -381,14 +384,14 @@ final public class Exec implements Runnable
 		}
 		finally
 		{
-			if (this.monitor != null)
+			if (execMonitor != null)
 			{
-				this.monitor.end();
+				execMonitor.stop();
 			}
-			
-			if (!this.interrupted)
+
+			if (this.isRunning)
 			{
-				this.manager.manageExecEnd(this);
+				this.stop();
 			}
 		}
 	}
@@ -403,15 +406,53 @@ final public class Exec implements Runnable
 
 		t.start();
 	}
-	
-	
+
+
+	/**
+	 * Restarts the exec.
+	 */
+	public void restart()
+	{
+		this.interrupt();
+
+		Exec clone = new Exec(this);
+
+		this.manager.manageExecRestart(clone);
+
+		clone.start();
+	}
+
+
+	/**
+	 * Stops the exec.
+	 */
+	public void stop()
+	{
+		this.isRunning = false;
+
+		this.manager.manageExecEnd(this);
+	}
+
+
 	/**
 	 * Interrupts the running Exec.
 	 */
 	public void interrupt()
 	{
-		this.interrupted = true;
-		
-		this.manager.killProcessById(this.runningProcessId);
+		this.isRunning		= false;
+		this.interrupted	= true;
+
+		this.manager.manageExecInterruption(this);
+	}
+
+
+	/**
+	 * Checks if the exec is running.
+	 *
+	 * @return
+	 */
+	public Boolean isRunning()
+	{
+		return this.isRunning && this.manager.isRunning();
 	}
 }
