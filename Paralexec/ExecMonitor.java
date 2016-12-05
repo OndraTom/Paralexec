@@ -20,6 +20,12 @@ final public class ExecMonitor implements Runnable
 
 
 	/**
+	 * Maximum presumed finish time (in seconds).
+	 */
+	private static int MAX_PRESUMED_FINISH_TIME = 60 * 60 * 10; // 10 hours
+
+
+	/**
 	 * Life cycle timeout.
 	 */
 	private static int LOOP_TIMEOUT = 500;
@@ -218,7 +224,7 @@ final public class ExecMonitor implements Runnable
 			catch (ExecStatisticsException e) {}
 		}
 
-		return 0;
+		return MAX_PRESUMED_FINISH_TIME;
 	}
 
 
