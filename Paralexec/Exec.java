@@ -68,6 +68,12 @@ final public class Exec implements Runnable
 
 
 	/**
+	 * Number of execution attempts.
+	 */
+	private int attempts = 1;
+
+
+	/**
 	 * Constructor.
 	 *
 	 * @param	process
@@ -96,6 +102,7 @@ final public class Exec implements Runnable
 		this.manager				= origin.manager;
 		this.error					= origin.error;
 		this.processedFilesCount	= origin.processedFilesCount;
+		this.attempts				= origin.attempts + 1;
 	}
 
 
@@ -123,6 +130,15 @@ final public class Exec implements Runnable
 	public int getRunningProcessId()
 	{
 		return this.runningProcessId;
+	}
+
+
+	/**
+	 * @return Attempts count.
+	 */
+	public int getAttemptsCount()
+	{
+		return this.attempts;
 	}
 
 

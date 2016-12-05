@@ -12,6 +12,14 @@ import java.io.File;
 final public class ExecMonitor implements Runnable
 {
 	/**
+	 * Maximum attempts.
+	 *
+	 * No restart after that.
+	 */
+	private static int MAX_ATTEMPTS_COUNT = 3;
+
+
+	/**
 	 * Life cycle timeout.
 	 */
 	private static int LOOP_TIMEOUT = 500;
@@ -98,30 +106,38 @@ final public class ExecMonitor implements Runnable
 	@Override
 	public void run()
 	{
-		while (this.isRunning())
+		// We will not block the exec which across the maximum number of attempts.
+		if (this.exec.getAttemptsCount() <= MAX_ATTEMPTS_COUNT)
 		{
-			try
+			while (this.isRunning())
 			{
-				Thread.sleep(LOOP_TIMEOUT);
+				try
+				{
+					Thread.sleep(LOOP_TIMEOUT);
+				}
+				catch (InterruptedException e) {}
+
+				// If data are changing, we ceep continue.
+				// If the Exec is processing first file in a row, we ceep continue.
+				if (this.outputDirectoryMonitor.hasDirectoryChanged() || !ExecStatistics.isProcessRegistered(this.getProcessSettingId()))
+				{
+					continue;
+				}
+
+				// Restart the Exec if it's stucked.
+				if (this.isExecOverTime())
+				{
+					Logger.log("Process setting " + this.getProcessSettingId() + " is stucked. Paralexec is restarting it.");
+
+					this.exec.restart();
+
+					break;
+				}
 			}
-			catch (InterruptedException e) {}
-
-			// If data are changing, we ceep continue.
-			// If the Exec is processing first file in a row, we ceep continue.
-			if (this.outputDirectoryMonitor.hasDirectoryChanged() || !ExecStatistics.isProcessRegistered(this.getProcessSettingId()))
-			{
-				continue;
-			}
-
-			// Restart the Exec if it's stucked.
-			if (this.isExecOverTime())
-			{
-				Logger.log("Process setting " + this.getProcessSettingId() + " is stucked. Paralexec is restarting it.");
-
-				this.exec.restart();
-
-				break;
-			}
+		}
+		else
+		{
+			Logger.log("Process " + this.exec.getProcess().getId() + " accrossed maximum number of restarts (" + MAX_ATTEMPTS_COUNT + ").");
 		}
 	}
 
