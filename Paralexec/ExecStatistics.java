@@ -37,6 +37,8 @@ final public class ExecStatistics
 	 */
 	public static void addProcessFileRate(int processSettingId, double fileRate)
 	{
+		Logger.log("registering process setting " + processSettingId + " into the statistics");
+
 		if (!isProcessRegistered(processSettingId))
 		{
 			List<Double> fileRates = new ArrayList<>();

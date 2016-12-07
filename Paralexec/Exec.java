@@ -11,6 +11,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Thread of the parallel execution.
@@ -206,6 +209,9 @@ final public class Exec implements Runnable
 		catch (Exception e)
 		{
 			Logger.logError(e.getMessage());
+
+			Random rand = new Random();
+			pid			= rand.nextInt(Integer.MAX_VALUE);
 		}
 
 		return pid;
@@ -244,10 +250,12 @@ final public class Exec implements Runnable
 	private String getFileExecutionCommand(File file) throws IOException, InterruptedException
 	{
 		String tmpPath		= this.scriptPath + ".tmp.sh";
+		// String tmpPath		= this.scriptPath + ".tmp.bat"; // TODO: get file extension!!
 		Path shellPath		= Paths.get(this.scriptPath);
 		Charset charset		= StandardCharsets.UTF_8;
 		String shellContent = new String(Files.readAllBytes(shellPath), charset);
 		shellContent		= shellContent.replace("[input_file_name]", file.getAbsolutePath());
+		shellContent		= shellContent.replace("[file-number]", Integer.toString(this.processedFilesCount + 1));
 
 		Files.write(Paths.get(tmpPath), shellContent.getBytes(charset));
 
@@ -272,6 +280,45 @@ final public class Exec implements Runnable
 		shellProcess.waitFor();
 
 		return command;
+		// return "cmd /c start /wait " + command; // TODO: smazat nebo vytunit!!
+	}
+
+
+	private List<String> getCommandParts(String command)
+	{
+		String[] split		= command.split(" ");
+		List<String> parts	= new ArrayList<>();
+		String interPart	= "";
+
+		for (String part : split)
+		{
+			if (part.startsWith("\"") && part.endsWith("\""))
+			{
+				parts.add(part.replace("\"", ""));
+			}
+			else if (part.startsWith("\""))
+			{
+				interPart = part.replace("\"", "");
+			}
+			else if (part.endsWith("\""))
+			{
+				interPart += " " + part.replace("\"", "");
+
+				parts.add(interPart);
+
+				interPart = "";
+			}
+			else if (!interPart.equals(""))
+			{
+				interPart += " " + part;
+			}
+			else
+			{
+				parts.add(part);
+			}
+		}
+
+		return parts;
 	}
 
 
@@ -288,7 +335,8 @@ final public class Exec implements Runnable
 
 		Logger.log("Executing cmd: " + command);
 
-		Process process = Runtime.getRuntime().exec(command);
+		ProcessBuilder pb	= new ProcessBuilder(this.getCommandParts(command));
+		Process process		= pb.start();
 
 		int pid = this.addProcessToProcessList(process);
 
@@ -326,7 +374,7 @@ final public class Exec implements Runnable
 			// We throw exception if we cannot load the files.
 			if (inputDirFiles == null)
 			{
-				throw new Exception("Cannot load input dir files (" + this.process.getInputDirPath() + ")");
+				throw new Exception("Cannot load input dir files (" + inputDir.getAbsolutePath() + ")");
 			}
 
 			// We will clean the output file only if we'll not skip any input file.
@@ -337,6 +385,7 @@ final public class Exec implements Runnable
 
 			// Monitoring of the running processes.
 			execMonitor = new ExecMonitor(this);
+			execMonitor.start();
 
 			for (int i = 0; i < inputDirFiles.length; i++)
 			{

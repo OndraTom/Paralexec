@@ -66,7 +66,7 @@ final public class ExecMonitor implements Runnable
 	/**
 	 * Minimal allowed running time without output file change.
 	 */
-	private long minimalAllowedRunningTime = 60 * 1; // 1 minute
+	private long minimalAllowedRunningTime = 2; // 1 minute
 
 
 	/**
@@ -104,8 +104,6 @@ final public class ExecMonitor implements Runnable
 		this.outputDirectoryMonitor = new DirectoryMonitor(
 				new File(this.exec.getProcess().getOutputDirPath())
 		);
-
-		this.reset();
 	}
 
 
@@ -127,6 +125,8 @@ final public class ExecMonitor implements Runnable
 				// If data are changing, we ceep continue.
 				if (!ExecStatistics.isProcessRegistered(this.getProcessSettingId()) || this.outputDirectoryMonitor.hasDirectoryChanged())
 				{
+					Logger.log("skipping first file");
+
 					continue;
 				}
 
@@ -167,8 +167,12 @@ final public class ExecMonitor implements Runnable
 		// The script can run at least for the minimal allowed running time.
 		if (this.getRunningTime() < this.minimalAllowedRunningTime)
 		{
+			Logger.log("is in minimal allowed time range");
+
 			return false;
 		}
+
+		Logger.log("checking running time: " + this.getRunningTime() + " > " + this.presumedMaxFinishedTime);
 
 		// Return TRUE if the running funning time is bigger then presumed finish time.
 		return this.getRunningTime() > this.presumedMaxFinishedTime;
@@ -209,7 +213,7 @@ final public class ExecMonitor implements Runnable
 	 */
 	private long getPresumedFinishTime()
 	{
-		if (!ExecStatistics.isProcessRegistered(this.getProcessSettingId()))
+		if (ExecStatistics.isProcessRegistered(this.getProcessSettingId()))
 		{
 			try
 			{
@@ -229,19 +233,6 @@ final public class ExecMonitor implements Runnable
 
 
 	/**
-	 * Completely resets the state.
-	 */
-	public void reset()
-	{
-		this.resetTime();
-
-		this.monitoredFile				= null;
-		this.monitoredFileSize			= 0;
-		this.presumedMaxFinishedTime	= 0;
-	}
-
-
-	/**
 	 * Resets the state and sets new Exec current file.
 	 *
 	 * @param	newMonitoredFile
@@ -249,8 +240,10 @@ final public class ExecMonitor implements Runnable
 	 */
 	public void reset(File newMonitoredFile) throws ExecMonitorException
 	{
-		// Save the last completed file fate.
-		if (this.monitoredFileSize > 0)
+		Logger.log("last monitored file size = " + this.monitoredFileSize);
+
+		// If this is not first reset then save the last completed file rate.
+		if (this.monitoredFile != null && this.monitoredFileSize > 0)
 		{
 			double runningTime	= this.getRunningTime();
 			double fileRate		= Math.ceil(runningTime / this.monitoredFileSize);
@@ -269,11 +262,11 @@ final public class ExecMonitor implements Runnable
 			throw new ExecMonitorException("Monitored Exec input file " + newMonitoredFile.getAbsolutePath() + " is empty.");
 		}
 
-		this.reset();
-
 		this.monitoredFile				= newMonitoredFile;
 		this.monitoredFileSize			= fileSize;
 		this.presumedMaxFinishedTime	= this.getPresumedFinishTime();
+
+		this.resetTime();
 	}
 
 
