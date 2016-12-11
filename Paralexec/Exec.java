@@ -257,6 +257,13 @@ final public class Exec implements Runnable
 		shellContent		= shellContent.replace("[input_file_name]", file.getAbsolutePath());
 		shellContent		= shellContent.replace("[file-number]", Integer.toString(this.processedFilesCount + 1));
 
+		// Escaping special characters.
+		String[] escapeCharacters	= {">", "|"};
+		for (String escapeCharacter : escapeCharacters)
+		{
+			shellContent = shellContent.replace(escapeCharacter, "\\" + escapeCharacter);
+		}
+
 		Files.write(Paths.get(tmpPath), shellContent.getBytes(charset));
 
 		// Setting the tmp file permissions.
@@ -279,46 +286,11 @@ final public class Exec implements Runnable
 
 		shellProcess.waitFor();
 
+		// Remove the temporary file.
+		//tmpFile.delete();
+
 		return command;
 		// return "cmd /c start /wait " + command; // TODO: smazat nebo vytunit!!
-	}
-
-
-	private List<String> getCommandParts(String command)
-	{
-		String[] split		= command.split(" ");
-		List<String> parts	= new ArrayList<>();
-		String interPart	= "";
-
-		for (String part : split)
-		{
-			if (part.startsWith("\"") && part.endsWith("\""))
-			{
-				parts.add(part.replace("\"", ""));
-			}
-			else if (part.startsWith("\""))
-			{
-				interPart = part.replace("\"", "");
-			}
-			else if (part.endsWith("\""))
-			{
-				interPart += " " + part.replace("\"", "");
-
-				parts.add(interPart);
-
-				interPart = "";
-			}
-			else if (!interPart.equals(""))
-			{
-				interPart += " " + part;
-			}
-			else
-			{
-				parts.add(part);
-			}
-		}
-
-		return parts;
 	}
 
 
@@ -335,7 +307,7 @@ final public class Exec implements Runnable
 
 		Logger.log("Executing cmd: " + command);
 
-		ProcessBuilder pb	= new ProcessBuilder(this.getCommandParts(command));
+		ProcessBuilder pb	= new ProcessBuilder("sh", "-c", command);
 		Process process		= pb.start();
 
 		int pid = this.addProcessToProcessList(process);
