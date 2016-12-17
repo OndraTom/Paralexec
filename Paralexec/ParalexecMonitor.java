@@ -40,6 +40,8 @@ final public class ParalexecMonitor implements Runnable
 			catch (InterruptedException e) {}
 		}
 
+		Logger.log("Running file disappeared. Stopping Paralexec.");
+
 		this.paralexec.stopProcessing();
 	}
 

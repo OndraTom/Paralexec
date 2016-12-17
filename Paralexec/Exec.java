@@ -11,8 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -250,18 +249,34 @@ final public class Exec implements Runnable
 	private String getFileExecutionCommand(File file) throws IOException, InterruptedException
 	{
 		String tmpPath		= this.scriptPath + ".tmp.sh";
-		// String tmpPath		= this.scriptPath + ".tmp.bat"; // TODO: get file extension!!
 		Path shellPath		= Paths.get(this.scriptPath);
 		Charset charset		= StandardCharsets.UTF_8;
 		String shellContent = new String(Files.readAllBytes(shellPath), charset);
 		shellContent		= shellContent.replace("[input_file_name]", file.getAbsolutePath());
 		shellContent		= shellContent.replace("[file-number]", Integer.toString(this.processedFilesCount + 1));
 
-		// Escaping special characters.
-		String[] escapeCharacters	= {">", "|"};
-		for (String escapeCharacter : escapeCharacters)
+		// TODO: this splitting is bad - it will also split the words ends with "echo"
+		String[] echoSplit	= shellContent.split("echo ");
+
+		// We will escape the last echo.
+		if (echoSplit.length > 1)
 		{
-			shellContent = shellContent.replace(escapeCharacter, "\\" + escapeCharacter);
+			echoSplit[echoSplit.length - 1] = this.getEscapedShellEcho(echoSplit[echoSplit.length - 1]);
+		}
+
+		// Implode script.
+		shellContent = "";
+
+		for (String p : echoSplit)
+		{
+			if (shellContent.equals(""))
+			{
+				shellContent = p;
+			}
+			else
+			{
+				shellContent += "echo " + p;
+			}
 		}
 
 		Files.write(Paths.get(tmpPath), shellContent.getBytes(charset));
@@ -287,10 +302,47 @@ final public class Exec implements Runnable
 		shellProcess.waitFor();
 
 		// Remove the temporary file.
-		//tmpFile.delete();
+		reader.close();
+		tmpFile.delete();
 
 		return command;
-		// return "cmd /c start /wait " + command; // TODO: smazat nebo vytunit!!
+	}
+
+
+	/**
+	 * @param	echoString
+	 * @return	Escaped shell echo string.
+	 */
+	private String getEscapedShellEcho(String echoString)
+	{
+		// Escaping special characters in last echo.
+		String[] escapeCharacters	= {">", "<", "|"};
+		String[] echoSplit			= echoString.split("\"");
+
+		// We will escape only parts which are not between quotation marsk.
+		for (int i = 0; i < echoSplit.length; i += 2)
+		{
+			for (String escapeCharacter : escapeCharacters)
+			{
+				echoSplit[i] = echoSplit[i].replace(escapeCharacter, "\\" + escapeCharacter);
+			}
+		}
+
+		// Implode last echo.
+		echoString = "";
+		for (String p : echoSplit)
+		{
+			if (echoString.equals(""))
+			{
+				echoString = p;
+			}
+			else
+			{
+				echoString += "\"" + p;
+			}
+		}
+
+		return echoString;
 	}
 
 
@@ -417,7 +469,7 @@ final public class Exec implements Runnable
 		{
 			this.error = e.getMessage();
 
-			Logger.logError("Script " + this.scriptPath + " finished with error: " + e.getMessage());
+			Logger.logError("Script " + this.scriptPath + " finished with error: " + e.getMessage() + " (" + Arrays.toString(e.getStackTrace()) + ")");
 		}
 		finally
 		{

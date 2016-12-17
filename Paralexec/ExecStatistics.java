@@ -80,7 +80,7 @@ final public class ExecStatistics
 			throw new ExecStatisticsException("Cannot get file avarage from empty avarages list.");
 		}
 
-		return Math.ceil(avarageRate / i);
+		return avarageRate / i;
 	}
 
 

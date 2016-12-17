@@ -402,7 +402,10 @@ final public class Paralexec
 	 */
 	public void stopProcessing()
 	{
+		Logger.log("Interrupting Execs.");
 		this.interruptAllRunningExecs();
+
+		Logger.log("Killing all processes.");
 		this.killAllProcesses();
 
 		try
@@ -448,6 +451,8 @@ final public class Paralexec
 	 */
 	public void killProcessById(int pid)
 	{
+		Logger.log("killing process " + pid);
+
 		Process process = this.processList.get(pid);
 
 		if (process != null)
