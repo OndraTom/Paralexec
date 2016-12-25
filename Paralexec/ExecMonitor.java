@@ -22,13 +22,19 @@ final public class ExecMonitor implements Runnable
 	/**
 	 * Maximum presumed finish time (in seconds).
 	 */
-	private static int MAX_PRESUMED_FINISH_TIME = 60 * 60 * 10; // 10 hours
+	private static int MAX_PRESUMED_FINISH_TIME = 60 * 60 * 1; // 1 hour
+	
+	
+	/**
+	 * Minimal allowed running time without output file change.
+	 */
+	private static int MINIMAL_ALLOWED_RUNNING_TIME = 30; // 30 seconds
 
 
 	/**
-	 * Life cycle timeout.
+	 * Life cycle timeout (miliseconds).
 	 */
-	private static int LOOP_TIMEOUT = 500;
+	private static int LOOP_TIMEOUT = 1000;
 
 
 	/**
@@ -58,18 +64,6 @@ final public class ExecMonitor implements Runnable
 
 
 	/**
-	 * Suspicious running time without output file change.
-	 */
-	private long suspiciousRunningTime = 60 * 60; // 60 minutes
-
-
-	/**
-	 * Minimal allowed running time without output file change.
-	 */
-	private long minimalAllowedRunningTime = 2; // 1 minute
-
-
-	/**
 	 * Exec current processing input file.
 	 */
 	private File monitoredFile = null;
@@ -84,7 +78,7 @@ final public class ExecMonitor implements Runnable
 	/**
 	 * Calculated estimate of finish time.
 	 */
-	private long presumedMaxFinishedTime = 0;
+	private long presumedMaxFinishedTime = MAX_PRESUMED_FINISH_TIME;
 
 
 	/**
@@ -121,12 +115,9 @@ final public class ExecMonitor implements Runnable
 				}
 				catch (InterruptedException e) {}
 
-				// If the Exec is processing first file in a row, we ceep continue.
 				// If data are changing, we ceep continue.
-				if (!ExecStatistics.isProcessRegistered(this.getProcessSettingId()) || this.outputDirectoryMonitor.hasDirectoryChanged())
+				if (this.outputDirectoryMonitor.hasDirectoryChanged())
 				{
-					Logger.log("skipping first file");
-
 					continue;
 				}
 
@@ -165,10 +156,8 @@ final public class ExecMonitor implements Runnable
 	private Boolean isExecOverTime()
 	{
 		// The script can run at least for the minimal allowed running time.
-		if (this.getRunningTime() < this.minimalAllowedRunningTime)
+		if (this.getRunningTime() < MINIMAL_ALLOWED_RUNNING_TIME)
 		{
-			Logger.log("is in minimal allowed time range");
-
 			return false;
 		}
 

@@ -417,6 +417,25 @@ final public class Paralexec
 			Logger.log("Unable to mark running processes as waiting: " + e.getMessage());
 		}
 	}
+	
+	
+	/**
+	 * Kills all potential running processes in OS.
+	 */
+	private void killStuckedProcessesInOs()
+	{
+		try
+		{
+			ProcessBuilder pb	= new ProcessBuilder("pkill", "-f", "app/totem/generators/../processes-scripts/");
+			Process process		= pb.start();
+
+			process.waitFor();
+		}
+		catch (Exception e)
+		{
+			Logger.logError("Cannot kill stucked processes in OS: " + e.getMessage());
+		}
+	}
 
 
 	/**
@@ -441,6 +460,11 @@ final public class Paralexec
 		}
 
 		this.processList.clear();
+		
+		// TODO: delete this piece of shit!
+		// It has to be replaced with straight executing of target applications
+		// instead of running it with sh -c command.
+		this.killStuckedProcessesInOs();
 	}
 
 
