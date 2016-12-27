@@ -245,16 +245,18 @@ final public class ExecMonitor implements Runnable
 			ExecStatistics.addProcessFileRate(this.getProcessSettingId(), fileRate);
 		}
 
-		long fileSize = newMonitoredFile.length() / 1024;
+		this.monitoredFile	= newMonitoredFile;
+		long fileSize		= newMonitoredFile.length() / 1024;
 
 		if (fileSize == 0)
 		{
-			throw new ExecMonitorException("Monitored Exec input file " + newMonitoredFile.getAbsolutePath() + " is empty.");
+			Logger.logError("Monitored Exec input file " + newMonitoredFile.getAbsolutePath() + " is empty.");
 		}
-
-		this.monitoredFile				= newMonitoredFile;
-		this.monitoredFileSize			= fileSize;
-		this.presumedMaxFinishedTime	= this.getPresumedFinishTime();
+		else
+		{
+			this.monitoredFileSize			= fileSize;
+			this.presumedMaxFinishedTime	= this.getPresumedFinishTime();
+		}
 
 		this.resetTime();
 	}

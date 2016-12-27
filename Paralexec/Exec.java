@@ -161,6 +161,24 @@ final public class Exec implements Runnable
 			}
 		}
 	}
+	
+	
+	private String getProcessChildrenIds()
+	{
+		String ids = "";
+		
+		for (ProcessSetting child : this.process.getChildren())
+		{
+			if (!ids.equals(""))
+			{
+				ids += ", ";
+			}
+			
+			ids += Integer.toString(child.getId());
+		}
+		
+		return ids;
+	}
 
 
 	/**
@@ -453,10 +471,14 @@ final public class Exec implements Runnable
 			{
 				Logger.log("Exec for process " + this.process.getId() + " has been stopped.");
 			}
+			
+			Logger.log("Process " + this.process.getId() + " children: " + this.getProcessChildrenIds());
 
 			// If we can run children, we'll do it.
 			if (this.manager.isRunning() && this.isRunning)
 			{
+				Logger.log("Running process " + this.process.getId() + "children.");
+				
 				this.processChildren();
 			}
 		}
