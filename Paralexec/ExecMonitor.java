@@ -98,6 +98,7 @@ final public class ExecMonitor implements Runnable
 		this.outputDirectoryMonitor = new DirectoryMonitor(
 				new File(this.exec.getProcess().getOutputDirPath())
 		);
+		this.startTime				= System.currentTimeMillis();
 	}
 
 
@@ -229,11 +230,11 @@ final public class ExecMonitor implements Runnable
 	 */
 	public void reset(File newMonitoredFile) throws ExecMonitorException
 	{
-		Logger.log("last monitored file size = " + this.monitoredFileSize);
-
 		// If this is not first reset then save the last completed file rate.
 		if (this.monitoredFile != null && this.monitoredFileSize > 0)
 		{
+			Logger.log("last monitored file size = " + this.monitoredFileSize);
+			
 			double runningTime	= this.getRunningTime();
 			double fileRate		= runningTime / this.monitoredFileSize;
 
