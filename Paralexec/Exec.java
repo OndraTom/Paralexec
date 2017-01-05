@@ -22,6 +22,12 @@ import java.util.Random;
 final public class Exec implements Runnable
 {
 	/**
+	 * Maximum count of try to open a file.
+	 */
+	private static int FILE_OPENING_MAX_TRY_COUNT = 5;
+	
+	
+	/**
 	 * Actual process setting.
 	 */
 	private ProcessSetting process;
@@ -304,26 +310,66 @@ final public class Exec implements Runnable
 		tmpFile.setReadable(true, false);
 		tmpFile.setWritable(true, false);
 		tmpFile.setExecutable(true, false);
-
-		// BE AWARE! Vomitor is not working here! We need seqence processing
-		// of the stream here (it's too quick for Vomitor to take it).
-		Process shellProcess	= Runtime.getRuntime().exec(tmpPath);
-		BufferedReader reader	= new BufferedReader(new InputStreamReader(shellProcess.getInputStream()));
-
-		String line, command = "";
-
-		while ((line = reader.readLine()) != null)
-		{
-			command += line;
-		}
-
-		shellProcess.waitFor();
-
-		// Remove the temporary file.
-		reader.close();
+		
+		// command = template call output
+		String command = this.getTmpFileOutput(tmpPath);
+		
 		tmpFile.delete();
 
 		return command;
+	}
+	
+	
+	/**
+	 * @param tmpPath
+	 * @return Template file string output.
+	 * @throws IOException 
+	 */
+	private String getTmpFileOutput(String tmpPath) throws IOException
+	{
+		String line, output = "";
+		int tryToOpenTimes	= 0;
+		boolean opened		= false;
+		
+		while (!opened && tryToOpenTimes < FILE_OPENING_MAX_TRY_COUNT)
+		{
+			tryToOpenTimes++;
+			
+			try
+			{
+				// BE AWARE! Vomitor is not working here! We need seqence processing
+				// of the stream here (it's too quick for Vomitor to take it).
+				Process shellProcess	= Runtime.getRuntime().exec(tmpPath);
+				BufferedReader reader	= new BufferedReader(new InputStreamReader(shellProcess.getInputStream()));
+
+				while ((line = reader.readLine()) != null)
+				{
+					output += line;
+				}
+
+				shellProcess.waitFor();
+
+				opened = true;
+				
+				// Remove the temporary file.
+				reader.close();
+			}
+			catch (Exception e)
+			{
+				try
+				{
+					Thread.sleep(1000);
+				}
+				catch (Exception ex) {}
+			}
+		}
+		
+		if (!opened)
+		{
+			throw new IOException("Cannot open tmp file");
+		}
+
+		return output;
 	}
 
 
