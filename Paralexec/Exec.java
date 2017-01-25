@@ -496,6 +496,8 @@ final public class Exec implements Runnable
 					execMonitor.reset(inputDirFiles[i]);
 
 					this.runProcessOnFile(inputDirFiles[i]);
+					
+					this.manager.ping(); // indicates a change
 				}
 
 				if (this.interrupted)

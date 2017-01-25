@@ -93,6 +93,12 @@ final public class Paralexec
 	 * Executed execs list.
 	 */
 	private Map<Integer, Exec> runningExecs = new HashMap<>();
+	
+	
+	/**
+	 * Last change time.
+	 */
+	private long lastChangeTime;
 
 
 	/**
@@ -102,12 +108,36 @@ final public class Paralexec
 	 */
 	public Paralexec() throws Exception
 	{
+		this.lastChangeTime			= System.currentTimeMillis();
 		this.processTable			= this.getExecutedProcessesTableInstance();
 		this.currentDir				= this.getCurrentDir();
 		this.runningFlagFilePath	= Paths.get(this.currentDir + File.separator + "running");
 		this.execQueue				= new LinkedList();
 
 		this.loadProcessTree();
+	}
+	
+	
+	/**
+	 * Restarts itself.
+	 * 
+	 * @param runMonitor
+	 * @throws Exception 
+	 */
+	public void restart(boolean runMonitor) throws Exception
+	{
+		this.stopProcessing();
+		this.deleteRunningFile();
+		
+		this.processList				= new HashMap<>();
+		this.runningThreads				= 0;
+		this.processingQueue			= false;
+		this.execQueue					= new LinkedList();
+		this.runningExecs				= new HashMap<>();
+		this.lastChangeTime				= System.currentTimeMillis();
+		
+		this.loadProcessTree();
+		this.processSettings(runMonitor);
 	}
 
 
@@ -129,7 +159,7 @@ final public class Paralexec
 			}
 
 			// Execute the process tree.
-			paralexec.processSettings();
+			paralexec.processSettings(true);
 		}
 		// Handle error.
 		catch (Exception e)
@@ -230,11 +260,17 @@ final public class Paralexec
 
 	/**
 	 * Process root processes.
+	 * 
+	 * @param runMonitor 
 	 */
-	private void processSettings()
+	private void processSettings(boolean runMonitor)
 	{
 		this.createRunningFile();
-		this.startMonitor();
+		
+		if (runMonitor)
+		{
+			this.startMonitor();
+		}
 
 		// We will fill the queue with the root processes.
 		for (ProcessSetting process : this.processTree.getRootItems())
@@ -604,5 +640,23 @@ final public class Paralexec
 	{
 		this.deleteRunningExec(exec);
 		this.killProcessById(exec.getRunningProcessId());
+	}
+	
+	
+	/**
+	 * @return Last change time (in milliseconds).
+	 */
+	public long getLastChangeTime()
+	{
+		return System.currentTimeMillis() - this.lastChangeTime;
+	}
+	
+	
+	/**
+	 * Updates the last change time - action indicator.
+	 */
+	public void ping()
+	{
+		this.lastChangeTime = System.currentTimeMillis();
 	}
 }
