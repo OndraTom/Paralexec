@@ -29,6 +29,6 @@ final public class TotemDbDriver extends DbDriver
 	@Override
 	final protected String getPassword()
 	{
-		return "";
+		return "root";
 	}
 }

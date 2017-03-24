@@ -41,7 +41,7 @@ final public class ExecutedProcessesTable extends DbTable
 	
 	public void markProcessAsRunning(int processId) throws DbTableException
 	{
-		if (this.updateQuery("UPDATE " + this.getTableName() + " SET state = \"RUNNING\", start_time = NOW() WHERE process_setting_id = " + processId) <= 0)
+		if (this.updateQuery("UPDATE " + this.getTableName() + " SET state = \"RUNNING\", start_time = NOW() WHERE process_setting_dataset_id = " + processId) <= 0)
 		{
 			throw new DbTableException("No affected rows after process marking.");
 		}
@@ -52,7 +52,7 @@ final public class ExecutedProcessesTable extends DbTable
 	{
 		try
 		{	
-			PreparedStatement stmt = this.dbConnection.prepareStatement("UPDATE " + this.getTableName() + " SET state = \"FINISHED\", end_time = NOW(), error = ? WHERE process_setting_id = " + processId);
+			PreparedStatement stmt = this.dbConnection.prepareStatement("UPDATE " + this.getTableName() + " SET state = \"FINISHED\", end_time = NOW(), error = ? WHERE process_setting_dataset_id = " + processId);
 
 			stmt.setString(1, error);
 			

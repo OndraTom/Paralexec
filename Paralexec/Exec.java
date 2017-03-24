@@ -464,6 +464,8 @@ final public class Exec implements Runnable
 			{
 				throw new Exception("Cannot load input dir files (" + inputDir.getAbsolutePath() + ")");
 			}
+			
+			Logger.log("Input files count of process " + this.process.getId() + ": " + inputDirFiles.length);
 
 			// We will clean the output file only if we'll not skip any input file.
 			if (this.processedFilesCount == 0)
