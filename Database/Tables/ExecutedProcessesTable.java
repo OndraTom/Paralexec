@@ -2,6 +2,7 @@ package Database.Tables;
 
 import Database.Drivers.DbDriver;
 import Database.Drivers.DbDriverException;
+import Database.DatabaseException;
 import Database.Drivers.TotemDbDriver;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,12 +14,6 @@ import java.sql.SQLException;
  */
 final public class ExecutedProcessesTable extends DbTable
 {
-	public ExecutedProcessesTable() throws DbDriverException
-	{
-		super();
-	}
-	
-
 	@Override
 	protected DbDriver getDb() throws DbDriverException
 	{
@@ -33,13 +28,13 @@ final public class ExecutedProcessesTable extends DbTable
 	}
 	
 	
-	public ResultSet getWaitingProcesses() throws DbTableException
+	public ResultSet getWaitingProcesses() throws DatabaseException
 	{
 		return this.query(this.getSelectAllSql() + " WHERE (state = \"WAITING\" OR (state = \"FINISHED\" AND error IS NOT NULL)) ORDER BY parent_id");
 	}
 	
 	
-	public void markProcessAsRunning(int processId) throws DbTableException
+	public void markProcessAsRunning(int processId) throws DatabaseException
 	{
 		if (this.updateQuery("UPDATE " + this.getTableName() + " SET state = \"RUNNING\", start_time = NOW() WHERE process_setting_dataset_id = " + processId) <= 0)
 		{
@@ -48,11 +43,11 @@ final public class ExecutedProcessesTable extends DbTable
 	}
 	
 	
-	public void markProcessAsFinished(int processId, String error) throws DbTableException
+	public void markProcessAsFinished(int processId, String error) throws DatabaseException
 	{
 		try
 		{	
-			PreparedStatement stmt = this.dbConnection.prepareStatement("UPDATE " + this.getTableName() + " SET state = \"FINISHED\", end_time = NOW(), error = ? WHERE process_setting_dataset_id = " + processId);
+			PreparedStatement stmt = this.getDbConnection().prepareStatement("UPDATE " + this.getTableName() + " SET state = \"FINISHED\", end_time = NOW(), error = ? WHERE process_setting_dataset_id = " + processId);
 
 			stmt.setString(1, error);
 			
@@ -68,7 +63,7 @@ final public class ExecutedProcessesTable extends DbTable
 	}
 	
 	
-	public void stopRunningProcesses() throws DbTableException
+	public void stopRunningProcesses() throws DatabaseException
 	{
 		this.updateQuery("UPDATE " + this.getTableName() + " SET state = \"WAITING\", start_time = NULL WHERE state = \"RUNNING\"");
 	}

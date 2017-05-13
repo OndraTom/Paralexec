@@ -2,6 +2,7 @@ package Database.Tables;
 
 import Database.Drivers.DbDriver;
 import Database.Drivers.DbDriverException;
+import Database.DatabaseException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,12 +14,15 @@ import java.sql.Statement;
  */
 abstract public class DbTable
 {
-	protected Connection dbConnection;
+	abstract protected DbDriver getDb() throws DbDriverException;
 	
 	
-	public DbTable() throws DbDriverException
+	abstract protected String getTableName();
+	
+	
+	protected Connection getDbConnection() throws DbDriverException
 	{
-		this.dbConnection = this.getDb().getConnection();
+		return this.getDb().getConnection();
 	}
 	
 	
@@ -28,11 +32,11 @@ abstract public class DbTable
 	}
 	
 	
-	public ResultSet query(String sql) throws DbTableException
+	public ResultSet query(String sql) throws DatabaseException
 	{
 		try
 		{
-			Statement stmt = this.dbConnection.createStatement();
+			Statement stmt = this.getDbConnection().createStatement();
 		
 			return stmt.executeQuery(sql);
 		}
@@ -43,11 +47,11 @@ abstract public class DbTable
 	}
 	
 	
-	public int updateQuery(String sql) throws DbTableException
+	public int updateQuery(String sql) throws DatabaseException
 	{
 		try
 		{
-			Statement stmt = this.dbConnection.createStatement();
+			Statement stmt = this.getDbConnection().createStatement();
 			
 			return stmt.executeUpdate(sql);
 		}
@@ -58,14 +62,8 @@ abstract public class DbTable
 	}
 	
 	
-	public ResultSet getAll() throws DbTableException
+	public ResultSet getAll() throws DatabaseException
 	{
 		return this.query(this.getSelectAllSql());
 	}
-	
-	
-	abstract protected DbDriver getDb() throws DbDriverException;
-	
-	
-	abstract protected String getTableName();
 }

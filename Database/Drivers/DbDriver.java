@@ -16,17 +16,17 @@ abstract public class DbDriver
 	
 	public DbDriver() throws DbDriverException
 	{
-		this.loadConnection();
+		this.connection = this.getNewConnection();
 	}
 	
 	
-	private void loadConnection() throws DbDriverException
+	private Connection getNewConnection() throws DbDriverException
 	{
 		try
 		{
 			Class.forName(JDBC_DRIVER);
 			
-			this.connection = DriverManager.getConnection(
+			return DriverManager.getConnection(
 					this.getDb(), 
 					this.getUser(), 
 					this.getPassword()
@@ -39,8 +39,20 @@ abstract public class DbDriver
 	}
 	
 	
-	public Connection getConnection()
+	public Connection getConnection() throws DbDriverException
 	{
+		try
+		{
+			if (this.connection.isClosed())
+			{
+				this.connection = this.getNewConnection();
+			}
+		}
+		catch (SQLException e)
+		{
+			throw new DbDriverException("Database access error: " + e.getMessage());
+		}
+		
 		return this.connection;
 	}
 	

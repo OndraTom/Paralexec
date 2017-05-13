@@ -1,5 +1,6 @@
 package paralexec;
 
+import Database.DatabaseException;
 import Database.Drivers.DbDriverException;
 import Database.Tables.DbTableException;
 import Database.Tables.ExecutedProcessesTable;
@@ -185,18 +186,10 @@ final public class Paralexec
 
 	/**
 	 * @return Executed processes table instance.
-	 * @throws Exception
 	 */
-	private ExecutedProcessesTable getExecutedProcessesTableInstance() throws Exception
+	private ExecutedProcessesTable getExecutedProcessesTableInstance()
 	{
-		try
-		{
-			return new ExecutedProcessesTable();
-		}
-		catch (DbDriverException e)
-		{
-			throw new Exception("DB error: " + e.getMessage());
-		}
+		return new ExecutedProcessesTable();
 	}
 
 
@@ -448,7 +441,7 @@ final public class Paralexec
 		{
 			this.processTable.stopRunningProcesses();
 		}
-		catch (DbTableException e)
+		catch (DatabaseException e)
 		{
 			Logger.log("Unable to mark running processes as waiting: " + e.getMessage());
 		}
@@ -534,7 +527,7 @@ final public class Paralexec
 		{
 			this.processTable.markProcessAsRunning(process.getId());
 		}
-		catch (DbTableException e)
+		catch (DatabaseException e)
 		{
 			Logger.logError("Unable to mark process " + process.getId() + " as running: " + e.getMessage());
 		}
@@ -552,7 +545,7 @@ final public class Paralexec
 		{
 			this.processTable.markProcessAsFinished(process.getId(), error);
 		}
-		catch (DbTableException e)
+		catch (DatabaseException e)
 		{
 			Logger.logError("Unable to mark process " + process.getId() + " as finished: " + e.getMessage());
 		}
