@@ -162,7 +162,7 @@ final public class ExecMonitor implements Runnable
 			return false;
 		}
 
-		Logger.log("checking running time: " + this.getRunningTime() + " > " + this.presumedMaxFinishedTime);
+		//Logger.log("checking running time: " + this.getRunningTime() + " > " + this.presumedMaxFinishedTime);
 
 		// Return TRUE if the running funning time is bigger then presumed finish time.
 		return this.getRunningTime() > this.presumedMaxFinishedTime;
