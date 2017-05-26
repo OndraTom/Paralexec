@@ -1,6 +1,7 @@
 package Database.Drivers;
 
 import java.sql.*;
+import paralexec.Logger;
 
 /**
  *
@@ -45,6 +46,8 @@ abstract public class DbDriver
 		{
 			if (this.connection.isClosed())
 			{
+				Logger.log("Cannot get connection - creating new.");
+				
 				this.connection = this.getNewConnection();
 			}
 		}

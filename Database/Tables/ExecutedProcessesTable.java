@@ -17,6 +17,12 @@ import java.util.List;
  */
 final public class ExecutedProcessesTable extends DbTable
 {
+	public ExecutedProcessesTable() throws DbDriverException
+	{
+		super();
+	}
+	
+	
 	@Override
 	protected DbDriver getDb() throws DbDriverException
 	{

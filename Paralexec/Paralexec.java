@@ -187,7 +187,7 @@ final public class Paralexec
 	/**
 	 * @return Executed processes table instance.
 	 */
-	private ExecutedProcessesTable getExecutedProcessesTableInstance()
+	private ExecutedProcessesTable getExecutedProcessesTableInstance() throws DbDriverException
 	{
 		return new ExecutedProcessesTable();
 	}

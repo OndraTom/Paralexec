@@ -10,6 +10,15 @@ import java.sql.Connection;
  */
 abstract public class DbTable
 {
+	protected DbDriver db;
+	
+	
+	public DbTable() throws DbDriverException
+	{
+		this.db = this.getDb();
+	}
+	
+	
 	abstract protected DbDriver getDb() throws DbDriverException;
 	
 	
@@ -18,7 +27,7 @@ abstract public class DbTable
 	
 	protected Connection getDbConnection() throws DbDriverException
 	{
-		return this.getDb().getConnection();
+		return this.db.getConnection();
 	}
 	
 	
