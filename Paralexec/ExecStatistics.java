@@ -1,4 +1,4 @@
-package paralexec;
+package Paralexec;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,8 +1,10 @@
 package Database.Drivers;
 
+import Config.TotemDb;
+
 /**
  *
- * @author ODIS
+ * @author oto
  */
 final public class TotemDbDriver extends DbDriver
 {
@@ -15,20 +17,20 @@ final public class TotemDbDriver extends DbDriver
 	@Override
 	final protected String getDb()
 	{
-		return "jdbc:mysql://localhost/totem";
+		return TotemDb.DB;
 	}
 	
 	
 	@Override
 	final protected String getUser()
 	{
-		return "root";
+		return TotemDb.USER;
 	}
 	
 	
 	@Override
 	final protected String getPassword()
 	{
-		return "root";
+		return TotemDb.PASSWORD;
 	}
 }

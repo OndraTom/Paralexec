@@ -1,4 +1,4 @@
-package paralexec;
+package Paralexec;
 
 import java.io.BufferedReader;
 import java.io.InputStream;

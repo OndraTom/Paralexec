@@ -1,18 +1,19 @@
-package paralexec;
+package Paralexec;
 
 import Process.ProcessSetting;
+import TotemProcessBuilder.CommandParserException;
+import TotemProcessBuilder.InvalidCommandException;
+import TotemProcessBuilder.TotemProcessBuilder;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Random;
 
 /**
  * Thread of the parallel execution.
@@ -61,12 +62,6 @@ final public class Exec implements Runnable
 	 * Interrupted flag.
 	 */
 	private Boolean interrupted = false;
-
-
-	/**
-	 * Running process ID (PID).
-	 */
-	private int runningProcessId = 0;
 
 
 	/**
@@ -133,15 +128,6 @@ final public class Exec implements Runnable
 
 
 	/**
-	 * @return Running process ID.
-	 */
-	public int getRunningProcessId()
-	{
-		return this.runningProcessId;
-	}
-
-
-	/**
 	 * @return Attempts count.
 	 */
 	public int getAttemptsCount()
@@ -184,60 +170,6 @@ final public class Exec implements Runnable
 		}
 		
 		return ids;
-	}
-
-
-	/**
-	 * Returns given process PID.
-	 *
-	 * @param process
-	 * @return
-	 * @throws Exception
-	 */
-	private int getProcessPid(Process process) throws Exception
-	{
-		try
-		{
-			Field f = process.getClass().getDeclaredField("pid");
-
-			f.setAccessible(true);
-
-			return f.getInt(process);
-		}
-		catch (Exception e)
-		{
-			throw new Exception("Cannot get PID from process.");
-		}
-	}
-
-
-	/**
-	 * Adds given process to the process list.
-	 *
-	 * @param	process
-	 * @return	Process PID.
-	 */
-	private int addProcessToProcessList(Process process)
-	{
-		int pid = 0;
-
-		try
-		{
-			pid = this.getProcessPid(process);
-
-			Logger.log("Adding pid " + pid);
-
-			this.manager.addProcessToList(pid, process);
-		}
-		catch (Exception e)
-		{
-			Logger.logError(e.getMessage());
-
-			Random rand = new Random();
-			pid			= rand.nextInt(Integer.MAX_VALUE);
-		}
-
-		return pid;
 	}
 
 
@@ -412,6 +344,8 @@ final public class Exec implements Runnable
 
 	/**
 	 * Executes process on given input file.
+	 * 
+	 * DEPRICATED - use only in emergency cases.
 	 *
 	 * @param	inputFile
 	 * @throws	IOException
@@ -426,10 +360,6 @@ final public class Exec implements Runnable
 		ProcessBuilder pb	= new ProcessBuilder("sh", "-c", command);
 		Process process		= pb.start();
 
-		int pid = this.addProcessToProcessList(process);
-
-		this.runningProcessId = pid;
-
 		// We need to vomit outputs for prevent the OS buffer overflow.
 		BufferVomitor inputStreamVomit = new BufferVomitor("stdin", process.getInputStream());
 		BufferVomitor errorStreamVomit = new BufferVomitor("stderr", process.getErrorStream());
@@ -438,10 +368,44 @@ final public class Exec implements Runnable
 		errorStreamVomit.start();
 
 		process.waitFor();
+	}
+	
+	
+	/**
+	 * Executes process on given input file.
+	 * 
+	 * @param	inputFile
+	 * @throws	IOException
+	 * @throws	InterruptedException
+	 * @throws	CommandParserException
+	 * @throws	InvalidCommandException 
+	 */
+	private void runProcessOnFileWithTotemProcessBuilder(File inputFile) throws IOException, InterruptedException, CommandParserException, InvalidCommandException
+	{
+		String command = this.getFileExecutionCommand(inputFile);
 
-		if (pid > 0)
+		Logger.log("Executing cmd: " + command);
+		
+		TotemProcessBuilder builder = new TotemProcessBuilder(command);
+
+		builder.start();
+		
+		// Waiting on the process end.
+		while (builder.isRunning())
 		{
-			this.manager.deleteProcessFromList(pid);
+			try
+			{
+				Thread.sleep(500);
+			}
+			catch (InterruptedException e) {}
+			
+			// If Exec has been interupted, stop the builder processing.
+			if (!this.isRunning)
+			{
+				Logger.log("Stopping process " + this.process.getId());
+				
+				builder.stop();
+			}
 		}
 	}
 
@@ -497,14 +461,15 @@ final public class Exec implements Runnable
 				{
 					execMonitor.reset(inputDirFiles[i]);
 
-					this.runProcessOnFile(inputDirFiles[i]);
+					//this.runProcessOnFile(inputDirFiles[i]);
+					this.runProcessOnFileWithTotemProcessBuilder(inputDirFiles[i]);
 					
 					this.manager.ping(); // indicates a change
 				}
 
 				if (this.interrupted)
 				{
-					throw new ExecInteruptedException("Exec has been interupted by monitor.");
+					throw new ExecInteruptedException("Exec has been interrupted.");
 				}
 
 				this.processedFilesCount++;
@@ -535,7 +500,7 @@ final public class Exec implements Runnable
 		// Monitor interruption.
 		catch (ExecInteruptedException e)
 		{
-			Logger.log("Exec for process " + this.process.getId() + " has been interrupted: " + e.getMessage());
+			Logger.log("Exec for process " + this.process.getId() + " has been interrupted.");
 		}
 		catch (Exception e)
 		{

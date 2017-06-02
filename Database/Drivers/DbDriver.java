@@ -1,7 +1,7 @@
 package Database.Drivers;
 
 import java.sql.*;
-import paralexec.Logger;
+import Paralexec.Logger;
 
 /**
  *

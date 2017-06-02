@@ -1,8 +1,7 @@
-package paralexec;
+package Paralexec;
 
 import Database.DatabaseException;
 import Database.Drivers.DbDriverException;
-import Database.Tables.DbTableException;
 import Database.Tables.ExecutedProcessesTable;
 import Process.ProcessSetting;
 import Process.ProcessSettingException;
@@ -42,12 +41,6 @@ final public class Paralexec
 	 * Process tree.
 	 */
 	private ProcessSettingTree processTree;
-
-
-	/**
-	 * Executed processes list.
-	 */
-	private Map<Integer, Process> processList = new HashMap<>();
 
 
 	/**
@@ -130,7 +123,6 @@ final public class Paralexec
 		this.stopProcessing();
 		this.deleteRunningFile();
 		
-		this.processList				= new HashMap<>();
 		this.runningThreads				= 0;
 		this.processingQueue			= false;
 		this.execQueue					= new LinkedList();
@@ -434,9 +426,6 @@ final public class Paralexec
 		Logger.log("Interrupting Execs.");
 		this.interruptAllRunningExecs();
 
-		Logger.log("Killing all processes.");
-		this.killAllProcesses();
-
 		try
 		{
 			this.processTable.stopRunningProcesses();
@@ -444,74 +433,6 @@ final public class Paralexec
 		catch (DatabaseException e)
 		{
 			Logger.log("Unable to mark running processes as waiting: " + e.getMessage());
-		}
-	}
-	
-	
-	/**
-	 * Kills all potential running processes in OS.
-	 */
-	private void killStuckedProcessesInOs()
-	{
-		try
-		{
-			ProcessBuilder pb	= new ProcessBuilder("pkill", "-f", "app/totem/generators/../processes-scripts/");
-			Process process		= pb.start();
-
-			process.waitFor();
-		}
-		catch (Exception e)
-		{
-			Logger.logError("Cannot kill stucked processes in OS: " + e.getMessage());
-		}
-	}
-
-
-	/**
-	 * Kills all processes in the list.
-	 */
-	private void killAllProcesses()
-	{
-		Logger.log("Killing all running processes.");
-
-		for (Map.Entry<Integer, Process> item : this.processList.entrySet())
-		{
-			try
-			{
-				Logger.log("Destroying the process.");
-
-				item.getValue().destroy();
-			}
-			catch (Exception e)
-			{
-				Logger.logError("Cannot kill with PID " + item.getKey() + ": " + e.getMessage());
-			}
-		}
-
-		this.processList.clear();
-		
-		// TODO: delete this piece of shit!
-		// It has to be replaced with straight executing of target applications
-		// instead of running it with sh -c command.
-		this.killStuckedProcessesInOs();
-	}
-
-
-	/**
-	 * Finds process in process list and kills it.
-	 *
-	 * @param pid
-	 */
-	public void killProcessById(int pid)
-	{
-		Logger.log("killing process " + pid);
-
-		Process process = this.processList.get(pid);
-
-		if (process != null)
-		{
-			process.destroy();
-			this.deleteProcessFromList(pid);
 		}
 	}
 
@@ -549,29 +470,6 @@ final public class Paralexec
 		{
 			Logger.logError("Unable to mark process " + process.getId() + " as finished: " + e.getMessage());
 		}
-	}
-
-
-	/**
-	 * Adds process to the process list.
-	 *
-	 * @param pid
-	 * @param process
-	 */
-	public void addProcessToList(int pid, Process process)
-	{
-		this.processList.put(pid, process);
-	}
-
-
-	/**
-	 * Removes process from the process list.
-	 *
-	 * @param pid
-	 */
-	public void deleteProcessFromList(int pid)
-	{
-		this.processList.remove(pid);
 	}
 
 
@@ -632,7 +530,6 @@ final public class Paralexec
 	public void manageExecInterruption(Exec exec)
 	{
 		this.deleteRunningExec(exec);
-		this.killProcessById(exec.getRunningProcessId());
 	}
 	
 	
